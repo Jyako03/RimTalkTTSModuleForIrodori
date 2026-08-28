@@ -9,8 +9,14 @@
         <AssemblyName>RimTalk.TTS</AssemblyName>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
-        <RimWorldDir Condition=" '$(RimWorldDir)' == '' ">$(RIMWORLD_DIR)</RimWorldDir>
+        <!--
+          Portable RimTalk reference resolution.
+          Preferred: pass RimTalkAssemblyPath explicitly from build.ps1.
+          Alternative: set RimTalkDir (or environment variable RIMTALK_DIR)
+          to the RimTalk mod root, e.g. ...\Mods\3551203752.
+        -->
         <RimTalkDir Condition=" '$(RimTalkDir)' == '' ">$(RIMTALK_DIR)</RimTalkDir>
+        <RimTalkAssemblyPath Condition=" '$(RimTalkAssemblyPath)' == '' and '$(RimTalkDir)' != '' ">$(RimTalkDir)\1.6\Assemblies\RimTalk.dll</RimTalkAssemblyPath>
 
         <OutputPath>../1.6/Assemblies</OutputPath>
         <LangVersion>default</LangVersion>
@@ -38,10 +44,17 @@
     <!-- Reference to RimTalk mod assembly for compilation (provided by game/mod at runtime) -->
     <ItemGroup>
         <Reference Include="RimTalk">
-            <HintPath>F:\SteamLibrary\steamapps\common\RimWorld\Mods\3551203752\1.6\Assemblies\RimTalk.dll</HintPath>
+            <HintPath>$(RimTalkAssemblyPath)</HintPath>
             <!-- Do not copy the assembly into our output; the game loads mod assemblies from its folder. -->
             <Private>false</Private>
         </Reference>
     </ItemGroup>
+
+    <Target Name="ValidateRimTalkReference" BeforeTargets="ResolveReferences">
+        <Error Condition=" '$(RimTalkAssemblyPath)' == '' "
+               Text="RimTalkAssemblyPath is not set. Use build.ps1 -RimTalkDir &lt;RimTalk mod root&gt;, set RIMTALK_DIR, or pass /p:RimTalkAssemblyPath=... to dotnet build." />
+        <Error Condition=" '$(RimTalkAssemblyPath)' != '' and !Exists('$(RimTalkAssemblyPath)') "
+               Text="RimTalk.dll was not found at '$(RimTalkAssemblyPath)'. Check -RimTalkDir / RIMTALK_DIR." />
+    </Target>
 
 </Project>
