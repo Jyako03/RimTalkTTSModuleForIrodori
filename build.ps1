@@ -1,12 +1,22 @@
 [CmdletBinding()]
 param(
-    [string]$RepoPath = $PSScriptRoot,
+    [string]$RepoPath = '',
     [string]$RimTalkDir = $env:RIMTALK_DIR,
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release'
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Windows PowerShell 5.1 can evaluate $PSScriptRoot as empty when it is used
+# directly as a parameter default. Resolve the default after parameter binding.
+if ([string]::IsNullOrWhiteSpace($RepoPath)) {
+    $RepoPath = $PSScriptRoot
+}
+
+if ([string]::IsNullOrWhiteSpace($RepoPath)) {
+    throw 'Repository path could not be resolved. Pass -RepoPath explicitly.'
+}
 
 function Resolve-RimTalkAssembly {
     param([string]$Path)
@@ -28,6 +38,10 @@ function Resolve-RimTalkAssembly {
     }
 
     return $null
+}
+
+if (-not (Test-Path -LiteralPath $RepoPath -PathType Container)) {
+    throw "Repository path does not exist: $RepoPath"
 }
 
 $resolvedRepo = (Resolve-Path -LiteralPath $RepoPath).Path
@@ -52,6 +66,7 @@ if (-not $dotnet) {
     throw 'dotnet SDK was not found in PATH.'
 }
 
+Write-Host "Repository:       $resolvedRepo"
 Write-Host "RimTalk assembly: $rimTalkAssembly"
 Write-Host "Project:          $project"
 Write-Host "Configuration:    $Configuration"
