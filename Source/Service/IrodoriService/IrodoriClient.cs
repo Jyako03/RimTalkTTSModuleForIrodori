@@ -259,7 +259,11 @@ namespace RimTalk.TTS.Service.IrodoriService
             using var msg = new HttpRequestMessage(HttpMethod.Delete, VoicesUrl(baseUrl) + "/" + Uri.EscapeDataString(voiceId));
             AddAuth(msg, apiKey);
             using var response = await Http.SendAsync(msg);
-            return response.IsSuccessStatusCode;
+            // Missing on the server is already the desired state; allow local cleanup.
+            if (response.IsSuccessStatusCode || (int)response.StatusCode == 404) return true;
+            string body = await response.Content.ReadAsStringAsync();
+            Log.Warning($"[RimTalk.TTS/VoiceManage] DELETE voice '{voiceId}' failed: HTTP {(int)response.StatusCode} {body}");
+            return false;
         }
 
         public static async Task<bool> CheckConnectionAsync(string baseUrl, string apiKey = null)

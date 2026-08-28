@@ -364,6 +364,62 @@ namespace RimTalk.TTS.Data
         }
 
         /// <summary>
+        /// Replace every saved pawn assignment that directly references one voice ID.
+        /// This operates on the per-save dictionary, including pawns not currently present in RimTalk.Cache.
+        /// </summary>
+        public static int ReplaceVoiceAssignments(string oldVoiceId, string newVoiceId)
+        {
+            if (_pawnVoiceMap == null || string.IsNullOrEmpty(oldVoiceId)) return 0;
+            if (string.IsNullOrEmpty(newVoiceId)) newVoiceId = VoiceModel.DEFAULT_MODEL_ID;
+
+            var pawnIds = new List<int>();
+            foreach (var kvp in _pawnVoiceMap)
+            {
+                if (kvp.Value == oldVoiceId)
+                    pawnIds.Add(kvp.Key);
+            }
+
+            foreach (int pawnId in pawnIds)
+            {
+                _pawnVoiceMap[pawnId] = newVoiceId;
+                _pawnResolvedVoiceMap.Remove(pawnId);
+            }
+            return pawnIds.Count;
+        }
+
+        /// <summary>
+        /// Repair direct voice assignments loaded from an older save when that Voice Profile no longer
+        /// exists in the current global ModSettings. Special choices (None/Default/Rule-based) are preserved.
+        /// Runtime already falls back to Default for an invalid direct ID; this method also heals the saved
+        /// raw assignment so BIO does not show a ghost selection and the next save persists the repair.
+        /// </summary>
+        public static int RepairInvalidVoiceAssignments()
+        {
+            if (_pawnVoiceMap == null || _pawnVoiceMap.Count == 0) return 0;
+
+            var pawnIds = new List<int>();
+            foreach (var kvp in _pawnVoiceMap)
+            {
+                string voiceId = kvp.Value;
+                if (string.IsNullOrEmpty(voiceId) ||
+                    voiceId == VoiceModel.DEFAULT_MODEL_ID ||
+                    voiceId == VoiceModel.RULE_BASED_MODEL_ID ||
+                    voiceId == VoiceModel.NONE_MODEL_ID)
+                    continue;
+
+                if (!IsVoiceModelValid(voiceId))
+                    pawnIds.Add(kvp.Key);
+            }
+
+            foreach (int pawnId in pawnIds)
+            {
+                _pawnVoiceMap[pawnId] = VoiceModel.DEFAULT_MODEL_ID;
+                _pawnResolvedVoiceMap.Remove(pawnId);
+            }
+            return pawnIds.Count;
+        }
+
+        /// <summary>
         /// Expose data for save/load
         /// </summary>
         public static void ExposeData()

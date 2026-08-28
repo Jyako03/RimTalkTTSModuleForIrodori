@@ -30,4 +30,13 @@
   <RimTalk.TTS.VoicePreview.SampleHint>各Voiceの試聴に使用する文章です。変更内容はSaveで保存されます。</RimTalk.TTS.VoicePreview.SampleHint>
   <RimTalk.TTS.VoicePreview.SampleText>こんにちは。声の確認です。今日もよろしくお願いします。</RimTalk.TTS.VoicePreview.SampleText>
   <RimTalk.TTS.VoicePreview.Failed>音声プレビューの生成に失敗しました。ログを確認してください。</RimTalk.TTS.VoicePreview.Failed>
+  <RimTalk.TTS.VoiceManage.RenameTitle>Voice表示名を編集</RimTalk.TTS.VoiceManage.RenameTitle>
+  <RimTalk.TTS.VoiceManage.RenameId>Voice ID: {0}</RimTalk.TTS.VoiceManage.RenameId>
+  <RimTalk.TTS.VoiceManage.Renamed>Voice名を「{0}」に変更しました。</RimTalk.TTS.VoiceManage.Renamed>
+  <RimTalk.TTS.VoiceManage.DeleteTitle>参照音声を削除</RimTalk.TTS.VoiceManage.DeleteTitle>
+  <RimTalk.TTS.VoiceManage.DeleteConfirm>「{0}」を削除しますか？ ID: {1}  Irodori Server上の参照音声ファイルとRimTalk TTSのVoice Profileを削除します。このVoiceを直接使用しているPawnはDefaultへ戻ります。</RimTalk.TTS.VoiceManage.DeleteConfirm>
+  <RimTalk.TTS.VoiceManage.Delete>削除</RimTalk.TTS.VoiceManage.Delete>
+  <RimTalk.TTS.VoiceManage.Deleted>参照音声「{0}」を削除しました。</RimTalk.TTS.VoiceManage.Deleted>
+  <RimTalk.TTS.VoiceManage.DeleteFailed>参照音声「{0}」を削除できませんでした: {1}</RimTalk.TTS.VoiceManage.DeleteFailed>
+  <RimTalk.TTS.VoiceManage.RepairedAssignments>削除済みVoiceを参照していたPawn {0}名をDefaultへ戻しました。</RimTalk.TTS.VoiceManage.RepairedAssignments>
 </LanguageData>

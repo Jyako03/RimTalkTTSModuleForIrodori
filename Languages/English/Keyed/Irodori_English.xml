@@ -30,4 +30,13 @@
   <RimTalk.TTS.VoicePreview.SampleHint>This text is used to audition each voice. Save stores your changes.</RimTalk.TTS.VoicePreview.SampleHint>
   <RimTalk.TTS.VoicePreview.SampleText>Hello. This is a voice preview. It is nice to meet you.</RimTalk.TTS.VoicePreview.SampleText>
   <RimTalk.TTS.VoicePreview.Failed>Failed to generate the voice preview. Check the log for details.</RimTalk.TTS.VoicePreview.Failed>
+  <RimTalk.TTS.VoiceManage.RenameTitle>Edit voice display name</RimTalk.TTS.VoiceManage.RenameTitle>
+  <RimTalk.TTS.VoiceManage.RenameId>Voice ID: {0}</RimTalk.TTS.VoiceManage.RenameId>
+  <RimTalk.TTS.VoiceManage.Renamed>Voice renamed to &quot;{0}&quot;.</RimTalk.TTS.VoiceManage.Renamed>
+  <RimTalk.TTS.VoiceManage.DeleteTitle>Delete reference voice</RimTalk.TTS.VoiceManage.DeleteTitle>
+  <RimTalk.TTS.VoiceManage.DeleteConfirm>Delete &quot;{0}&quot;? ID: {1}. This removes the reference audio file from Irodori Server and the RimTalk TTS Voice Profile. Pawns directly using it are returned to Default.</RimTalk.TTS.VoiceManage.DeleteConfirm>
+  <RimTalk.TTS.VoiceManage.Delete>Delete</RimTalk.TTS.VoiceManage.Delete>
+  <RimTalk.TTS.VoiceManage.Deleted>Deleted reference voice &quot;{0}&quot;.</RimTalk.TTS.VoiceManage.Deleted>
+  <RimTalk.TTS.VoiceManage.DeleteFailed>Could not delete reference voice &quot;{0}&quot;: {1}</RimTalk.TTS.VoiceManage.DeleteFailed>
+  <RimTalk.TTS.VoiceManage.RepairedAssignments>Returned {0} pawn voice assignment(s) that referenced deleted Voice Profiles to Default.</RimTalk.TTS.VoiceManage.RepairedAssignments>
 </LanguageData>

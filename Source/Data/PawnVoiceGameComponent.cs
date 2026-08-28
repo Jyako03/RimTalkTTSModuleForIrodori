@@ -1,4 +1,5 @@
 using Verse;
+using RimWorld;
 
 namespace RimTalk.TTS.Data
 {
@@ -14,6 +15,19 @@ namespace RimTalk.TTS.Data
         public override void ExposeData()
         {
             PawnVoiceManager.ExposeData();
+        }
+
+        public override void FinalizeInit()
+        {
+            base.FinalizeInit();
+            int repaired = PawnVoiceManager.RepairInvalidVoiceAssignments();
+            if (repaired <= 0) return;
+
+            Log.Warning($"[RimTalk.TTS/VoiceManage] Repaired {repaired} pawn voice assignment(s) that referenced Voice Profiles no longer present in global settings. They now use Default.");
+            Messages.Message(
+                "RimTalk.TTS.VoiceManage.RepairedAssignments".Translate(repaired).ToString(),
+                MessageTypeDefOf.TaskCompletion,
+                false);
         }
     }
 }

@@ -32,6 +32,13 @@ namespace RimTalk.TTS.UI
         private string _pendingPreviewError = null;
         private string _previewGeneratingVoiceId = null;
 
+        private readonly object _voiceManageLock = new object();
+        private string _deletingManagedVoiceId = null;
+        private bool _pendingManagedDelete = false;
+        private bool _pendingManagedDeleteSuccess = false;
+        private string _pendingManagedDeleteVoiceId = null;
+        private string _pendingManagedDeleteError = null;
+
         static VoiceSelectionWindow()
         {
         }
@@ -70,6 +77,7 @@ namespace RimTalk.TTS.UI
         public override void DoWindowContents(Rect inRect)
         {
             ApplyVoicePreviewResult();
+            ApplyManagedVoiceDeleteResult();
 
             Text.Font = GameFont.Medium;
             Rect titleRect = new Rect(inRect.x, inRect.y, inRect.width, 35f);
@@ -238,35 +246,29 @@ namespace RimTalk.TTS.UI
         private void DrawVoiceOption(ref float y, float width, string voiceId, string label, string description)
         {
             Rect optionRect = new Rect(0f, y, width, 35f);
-
             bool isSelected = _selectedVoiceId == voiceId;
             bool canPreview = CanPreviewVoice(voiceId);
-            float previewArea = canPreview ? 58f : 0f;
+            bool canRename = CanRenameVoice(voiceId);
+            bool canDelete = CanDeleteManagedVoice(voiceId);
 
-            if (isSelected)
-            {
-                Widgets.DrawBoxSolid(optionRect, new Color(0.3f, 0.5f, 0.3f, 0.5f));
-            }
-            else
-            {
-                Widgets.DrawBoxSolid(optionRect, new Color(0.2f, 0.2f, 0.2f, 0.3f));
-            }
+            const float actionW = 40f;
+            const float actionGap = 4f;
+            int actionCount = (canPreview ? 1 : 0) + (canRename ? 1 : 0) + (canDelete ? 1 : 0);
+            float actionArea = actionCount > 0 ? actionCount * actionW + (actionCount - 1) * actionGap + 6f : 0f;
 
+            Widgets.DrawBoxSolid(optionRect, isSelected
+                ? new Color(0.3f, 0.5f, 0.3f, 0.5f)
+                : new Color(0.2f, 0.2f, 0.2f, 0.3f));
             Widgets.DrawHighlightIfMouseover(optionRect);
 
-            // Radio button
             Rect radioRect = new Rect(optionRect.x + 5f, optionRect.y + 7f, 20f, 20f);
             bool wasSelected = isSelected;
             Widgets.Checkbox(radioRect.position, ref isSelected, 20f, false, true);
-
             if (isSelected && !wasSelected)
-            {
                 _selectedVoiceId = voiceId;
-            }
 
-            // Label / ID leave room for the Irodori audition button.
             Rect labelRect = new Rect(radioRect.xMax + 10f, optionRect.y + 2f,
-                Math.Max(40f, width - 40f - previewArea), 18f);
+                Math.Max(40f, width - 40f - actionArea), 18f);
             Text.Anchor = TextAnchor.MiddleLeft;
             Widgets.Label(labelRect, label);
 
@@ -278,24 +280,37 @@ namespace RimTalk.TTS.UI
             GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft;
 
+            float actionX = optionRect.xMax - actionArea + 6f;
             if (canPreview)
             {
-                Rect previewRect = new Rect(optionRect.xMax - 50f, optionRect.y + 4f, 44f, 27f);
-                // Keep this deliberately language-neutral and compact. Missing translations must never
-                // expand the button into a raw localization key again.
+                Rect previewRect = new Rect(actionX, optionRect.y + 4f, actionW, 27f);
                 string previewLabel = _previewGeneratingVoiceId == voiceId ? "…" : "▶";
                 if (Widgets.ButtonText(previewRect, previewLabel))
                     BeginVoicePreview(voiceId);
+                actionX += actionW + actionGap;
+            }
+            if (canRename)
+            {
+                Rect renameRect = new Rect(actionX, optionRect.y + 4f, actionW, 27f);
+                if (Widgets.ButtonText(renameRect, "✎"))
+                    BeginRenameVoice(voiceId);
+                actionX += actionW + actionGap;
+            }
+            if (canDelete)
+            {
+                Rect deleteRect = new Rect(actionX, optionRect.y + 4f, actionW, 27f);
+                string deleteLabel = _deletingManagedVoiceId == voiceId ? "…" : "×";
+                GUI.color = new Color(1f, 0.72f, 0.72f);
+                bool clicked = Widgets.ButtonText(deleteRect, deleteLabel);
+                GUI.color = Color.white;
+                if (clicked && string.IsNullOrEmpty(_deletingManagedVoiceId))
+                    ConfirmManagedVoiceDelete(voiceId);
             }
 
-            // Keep the row click target away from the preview button so auditioning a voice does
-            // not implicitly change the pending BIO assignment.
             Rect rowClickRect = optionRect;
-            if (canPreview) rowClickRect.width = Math.Max(1f, rowClickRect.width - 58f);
+            rowClickRect.width = Math.Max(1f, rowClickRect.width - actionArea);
             if (Widgets.ButtonInvisible(rowClickRect))
-            {
                 _selectedVoiceId = voiceId;
-            }
 
             y += 40f;
         }
@@ -304,18 +319,195 @@ namespace RimTalk.TTS.UI
         {
             if (_settings == null || _settings.Supplier != TTSSettings.TTSSupplier.Irodori || _settings.Irodori == null)
                 return false;
+            return IsCustomVoiceId(voiceId);
+        }
+
+        private bool CanRenameVoice(string voiceId)
+        {
+            return IsCustomVoiceId(voiceId);
+        }
+
+        private bool CanDeleteManagedVoice(string voiceId)
+        {
+            return _settings != null && _settings.Supplier == TTSSettings.TTSSupplier.Irodori &&
+                   IsCustomVoiceId(voiceId) &&
+                   !string.Equals(voiceId, "none", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool RequiresManagedDeleteConfirmation(string voiceId)
+        {
+            // Voice Lab voices are disposable candidates/registrations and delete immediately.
+            // Manually placed/registered voices receive an explicit confirmation dialog.
+            return !string.IsNullOrWhiteSpace(voiceId) &&
+                   !voiceId.StartsWith("rttts_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsCustomVoiceId(string voiceId)
+        {
             if (string.IsNullOrWhiteSpace(voiceId) || voiceId == VoiceModel.NONE_MODEL_ID ||
                 voiceId == VoiceModel.DEFAULT_MODEL_ID || voiceId == VoiceModel.RULE_BASED_MODEL_ID)
                 return false;
             return _voiceModels != null && _voiceModels.Exists(m => m != null && m.ModelId == voiceId);
         }
 
+        private void BeginRenameVoice(string voiceId)
+        {
+            if (!CanRenameVoice(voiceId)) return;
+            VoiceModel model = _voiceModels.Find(m => m != null && m.ModelId == voiceId);
+            if (model == null) return;
+            Find.WindowStack.Add(new VoiceDisplayNameEditWindow(voiceId, model.ModelName, newName =>
+            {
+                model.ModelName = string.IsNullOrWhiteSpace(newName) ? voiceId : newName.Trim();
+                _settings.SetSupplierVoiceModels(_settings.Supplier, _voiceModels);
+                WriteVoiceManagementSettings();
+                Messages.Message("RimTalk.TTS.VoiceManage.Renamed".Translate(model.ModelName).ToString(),
+                    MessageTypeDefOf.TaskCompletion, false);
+            }));
+        }
+
+        private void ConfirmManagedVoiceDelete(string voiceId)
+        {
+            if (!CanDeleteManagedVoice(voiceId) || !string.IsNullOrEmpty(_deletingManagedVoiceId)) return;
+
+            if (!RequiresManagedDeleteConfirmation(voiceId))
+            {
+                BeginManagedVoiceDelete(voiceId);
+                return;
+            }
+
+            VoiceModel model = _voiceModels.Find(m => m != null && m.ModelId == voiceId);
+            string displayName = model?.GetDisplayName() ?? voiceId;
+            Find.WindowStack.Add(new VoiceDeleteConfirmWindow(displayName, voiceId,
+                () => BeginManagedVoiceDelete(voiceId)));
+        }
+
+        private void BeginManagedVoiceDelete(string voiceId)
+        {
+            if (!CanDeleteManagedVoice(voiceId) || !string.IsNullOrEmpty(_deletingManagedVoiceId)) return;
+            string baseUrl = _settings?.Irodori?.BaseUrl;
+            string apiKey = _settings?.GetSupplierApiKey(TTSSettings.TTSSupplier.Irodori);
+            if (string.IsNullOrWhiteSpace(baseUrl))
+            {
+                Messages.Message("Irodori Base URL is empty.", MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            _deletingManagedVoiceId = voiceId;
+            Task.Run(async () =>
+            {
+                bool success = false;
+                string error = null;
+                try
+                {
+                    success = await IrodoriClient.DeleteVoiceAsync(baseUrl, apiKey, voiceId);
+                    if (!success)
+                    {
+                        error = ContainsNonAscii(voiceId)
+                            ? "Irodori server rejected the delete request. This non-ASCII voice ID may require the v5.9 Irodori Server Unicode DELETE patch."
+                            : "Irodori server rejected the delete request.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    error = ex.GetType().Name + ": " + ex.Message;
+                    Log.Error($"[RimTalk.TTS/VoiceManage] Delete exception for '{voiceId}': {ex}");
+                }
+                lock (_voiceManageLock)
+                {
+                    _pendingManagedDelete = true;
+                    _pendingManagedDeleteSuccess = success;
+                    _pendingManagedDeleteVoiceId = voiceId;
+                    _pendingManagedDeleteError = error;
+                }
+            });
+        }
+
+        private static bool ContainsNonAscii(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return false;
+            foreach (char c in value)
+                if (c > 127) return true;
+            return false;
+        }
+
+        private void ApplyManagedVoiceDeleteResult()
+        {
+            bool success;
+            string voiceId;
+            string error;
+            lock (_voiceManageLock)
+            {
+                if (!_pendingManagedDelete) return;
+                success = _pendingManagedDeleteSuccess;
+                voiceId = _pendingManagedDeleteVoiceId;
+                error = _pendingManagedDeleteError;
+                _pendingManagedDelete = false;
+                _pendingManagedDeleteVoiceId = null;
+                _pendingManagedDeleteError = null;
+            }
+            _deletingManagedVoiceId = null;
+
+            if (!success)
+            {
+                Messages.Message("RimTalk.TTS.VoiceManage.DeleteFailed".Translate(voiceId ?? "?", error ?? "Unknown error").ToString(),
+                    MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            try
+            {
+                var models = _settings.GetSupplierVoiceModels(TTSSettings.TTSSupplier.Irodori);
+                models?.RemoveAll(m => m != null && m.ModelId == voiceId);
+                _settings.SetSupplierVoiceModels(TTSSettings.TTSSupplier.Irodori, models ?? new List<VoiceModel>());
+
+                if (_settings.Irodori?.VoiceConfigs != null)
+                    _settings.Irodori.VoiceConfigs.Remove(voiceId);
+
+                var rules = _settings.GetSupplierVoiceRules(TTSSettings.TTSSupplier.Irodori);
+                if (rules != null)
+                {
+                    foreach (var rule in rules)
+                        rule?.VoiceModelIds?.RemoveAll(id => id == voiceId);
+                    _settings.SetSupplierVoiceRules(TTSSettings.TTSSupplier.Irodori, rules);
+                    PawnVoiceManager.OnRulesChanged();
+                }
+
+                if (_settings.GetSupplierDefaultVoiceModelId(TTSSettings.TTSSupplier.Irodori) == voiceId)
+                    _settings.SetSupplierDefaultVoiceModelId(TTSSettings.TTSSupplier.Irodori, VoiceModel.NONE_MODEL_ID);
+
+                int resetAssignments = PawnVoiceManager.ReplaceVoiceAssignments(voiceId, VoiceModel.DEFAULT_MODEL_ID);
+
+                if (_selectedVoiceId == voiceId)
+                    _selectedVoiceId = VoiceModel.DEFAULT_MODEL_ID;
+
+                WriteVoiceManagementSettings();
+                Messages.Message("RimTalk.TTS.VoiceManage.Deleted".Translate(voiceId).ToString(),
+                    MessageTypeDefOf.TaskCompletion, false);
+                Log.Message($"[RimTalk.TTS/VoiceManage] Deleted server voice/profile '{voiceId}'. Reset pawn assignments: {resetAssignments}.");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[RimTalk.TTS/VoiceManage] Server voice '{voiceId}' was deleted but local cleanup failed: {ex}");
+                Messages.Message("Local voice cleanup failed: " + ex.Message, MessageTypeDefOf.RejectInput, false);
+            }
+        }
+
+        private void WriteVoiceManagementSettings()
+        {
+            try
+            {
+                var modInstance = LoadedModManager.GetMod(typeof(TTSMod)) as TTSMod;
+                modInstance?.WriteSettings();
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[RimTalk.TTS/VoiceManage] Failed to persist voice management changes: {ex}");
+            }
+        }
+
         private void BeginVoicePreview(string voiceId)
         {
             if (!CanPreviewVoice(voiceId)) return;
-
-            // Clicking another BIO preview immediately stops an already-audible preview. The new
-            // voice begins when its short synthesis request returns.
             AudioPlaybackService.StopPreviewAudio();
 
             int requestVersion;
@@ -356,10 +548,8 @@ namespace RimTalk.TTS.UI
                     error = ex.GetType().Name + ": " + ex.Message;
                     Log.Error($"[RimTalk.TTS/BioPreview] Preview generation exception for '{voiceId}': {ex}");
                 }
-
                 lock (_previewLock)
                 {
-                    // A newer click wins; do not let a slower old HTTP result suddenly play later.
                     if (requestVersion != _previewRequestVersion) return;
                     _pendingPreviewVersion = requestVersion;
                     _pendingPreviewAudio = audio;
@@ -383,16 +573,13 @@ namespace RimTalk.TTS.UI
                 _pendingPreviewAudio = null;
                 _pendingPreviewError = null;
             }
-
             if (version != _previewRequestVersion) return;
             _previewGeneratingVoiceId = null;
-
             if (!string.IsNullOrWhiteSpace(error))
             {
                 Messages.Message(error, MessageTypeDefOf.RejectInput, false);
                 return;
             }
-
             AudioPlaybackService.PlayPreviewAudio(audio,
                 _settings?.GetSupplierVolume(TTSSettings.TTSSupplier.Irodori) ?? 1.0f);
         }
