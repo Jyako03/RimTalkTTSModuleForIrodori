@@ -29,6 +29,8 @@ namespace RimTalk.TTS.UI
         private static string uploadPathBuffer = "";
         private static string uploadNameBuffer = "";
         private static string uploadTextBuffer = "";
+        private static string irodoriUploadPathBuffer = "";
+        private static string irodoriUploadIdBuffer = "";
         // Queue for actions that must run on the main thread (e.g. UI updates)
         private static System.Collections.Concurrent.ConcurrentQueue<System.Action> pendingActions = new System.Collections.Concurrent.ConcurrentQueue<System.Action>();
 
@@ -53,8 +55,8 @@ namespace RimTalk.TTS.UI
             }
 
             // Calculate content height dynamically based on selected supplier's voice model count
-            float baseHeight = 2000f; // base for other sections
-            float voiceModelRowHeight = 40f; // Height per voice model row (30f + 6f gap + padding)
+            float baseHeight = 2000f + (settings.Supplier == TTSSettings.TTSSupplier.Irodori ? 1250f : 0f); // Irodori has an extended request + fast-path panel
+            float voiceModelRowHeight = settings.Supplier == TTSSettings.TTSSupplier.Irodori ? 96f : 40f; // Irodori adds refs/style + effective pawn summary rows
             var supplierVoiceModels = settings.GetSupplierVoiceModels(settings.Supplier);
             int voiceModelCount = supplierVoiceModels?.Count ?? 0;
             // If supplier supports SiliconFlow uploads, include upload UI height estimate
@@ -101,6 +103,7 @@ namespace RimTalk.TTS.UI
             listing.Gap();
 
             listing.CheckboxLabeled("RimTalk.Settings.TTS.ButtonEnable".Translate(), ref settings.ButtonDisplay, "RimTalk.Settings.TTS.ButtonEnableTooltip".Translate());
+            listing.CheckboxLabeled("RimTalk.Settings.TTS.ShowDebugControlButtons".Translate(), ref settings.ShowDebugControlButtons, "RimTalk.Settings.TTS.ShowDebugControlButtonsTooltip".Translate());
 
             listing.Gap();
 
@@ -160,6 +163,12 @@ namespace RimTalk.TTS.UI
                 options.Add(new FloatMenuOption("RimTalk.Settings.TTS.TTSSupplier.GeminiTTS".Translate(), delegate
                 {
                     settings.Supplier = TTSSettings.TTSSupplier.GeminiTTS;
+                    TTSService.SetProvider(settings.Supplier, settings);
+                }));
+                options.Add(new FloatMenuOption("Irodori TTS", delegate
+                {
+                    settings.Supplier = TTSSettings.TTSSupplier.Irodori;
+                    if (string.IsNullOrWhiteSpace(settings.GetSupplierModel(settings.Supplier))) settings.SetSupplierModel(settings.Supplier, "irodori-tts");
                     TTSService.SetProvider(settings.Supplier, settings);
                 }));
                 options.Add(new FloatMenuOption("RimTalk.Settings.TTS.TTSSupplier.TTSWebUI".Translate(), delegate
@@ -342,6 +351,11 @@ namespace RimTalk.TTS.UI
                     }
                 }
 
+                if (settings.Supplier == TTSSettings.TTSSupplier.Irodori)
+                {
+                    DrawIrodoriConfigSection(listing, settings);
+                }
+
                 listing.Gap();
                 
                 int currentCooldown = settings.GetSupplierGenerateCooldown(settings.Supplier);
@@ -485,11 +499,18 @@ namespace RimTalk.TTS.UI
             listing.Gap(6f);
             Rect resetButtonsRect3 = listing.GetRect(30f);
             Rect ttswebuiRect = new Rect(resetButtonsRect3.x, resetButtonsRect3.y, btnW, resetButtonsRect3.height);
+            Rect irodoriRect = new Rect(resetButtonsRect3.x + btnW + gap, resetButtonsRect3.y, btnW, resetButtonsRect3.height);
 
             if (Widgets.ButtonText(ttswebuiRect, "RimTalk.Settings.TTS.ResetPrompt.TTSWebUI".Translate()))
             {
                 settings.CustomTTSProcessingPrompt = Data.TTSConstant.DefaultTTSProcessingPrompt_TTSWebUI;
                 processingPromptBuffer = Data.TTSConstant.DefaultTTSProcessingPrompt_TTSWebUI;
+            }
+
+            if (Widgets.ButtonText(irodoriRect, "Irodori"))
+            {
+                settings.CustomTTSProcessingPrompt = Data.TTSConstant.DefaultTTSProcessingPrompt_Irodori;
+                processingPromptBuffer = Data.TTSConstant.DefaultTTSProcessingPrompt_Irodori;
             }
         }
 
@@ -854,7 +875,10 @@ namespace RimTalk.TTS.UI
             listing.Gap(6f);
 
             // Column descriptions
-            listing.Label("RimTalk.Settings.TTS.ColumnDescription".Translate());
+            if (settings.Supplier == TTSSettings.TTSSupplier.Irodori)
+                listing.Label("Voice Profile Name is display-only. Irodori Voice ID is the exact server voice ID. Assign each pawn from Bio > Voice; profile names do not auto-assign by pawn name.");
+            else
+                listing.Label("RimTalk.Settings.TTS.ColumnDescription".Translate());
             listing.Gap(6f);
 
             // Draw table headers
@@ -869,11 +893,11 @@ namespace RimTalk.TTS.UI
             float idWidth = (width - 130f) * 0.4f;
 
             Rect nameHeaderRect = new Rect(x, y, nameWidth, height);
-            Widgets.Label(nameHeaderRect, "RimTalk.Settings.TTS.ColumnModelName".Translate());
+            Widgets.Label(nameHeaderRect, settings.Supplier == TTSSettings.TTSSupplier.Irodori ? "Voice Profile Name" : "RimTalk.Settings.TTS.ColumnModelName".Translate().ToString());
             x += nameWidth + 5f;
 
             Rect idHeaderRect = new Rect(x, y, idWidth, height);
-            Widgets.Label(idHeaderRect, "RimTalk.Settings.TTS.ColumnModelID".Translate());
+            Widgets.Label(idHeaderRect, settings.Supplier == TTSSettings.TTSSupplier.Irodori ? "Irodori Voice ID" : "RimTalk.Settings.TTS.ColumnModelID".Translate().ToString());
 
             // Draw each model config row
             if (voiceModels != null)
@@ -881,6 +905,17 @@ namespace RimTalk.TTS.UI
                 for (int i = 0; i < voiceModels.Count; i++)
                 {
                     DrawModelConfigRow(listing, voiceModels[i], i, voiceModels, width);
+                    if (settings.Supplier == TTSSettings.TTSSupplier.Irodori && voiceModels[i] != null && !string.IsNullOrWhiteSpace(voiceModels[i].ModelId))
+                    {
+                        Rect irodoriVoiceRect = listing.GetRect(28f);
+                        if (Widgets.ButtonText(irodoriVoiceRect, "Irodori reference/style: " + voiceModels[i].GetDisplayName()))
+                            Find.WindowStack.Add(new IrodoriVoiceConfigWindow(settings, voiceModels[i]));
+                        Text.Font = GameFont.Tiny;
+                        GUI.color = new Color(0.75f, 0.85f, 0.75f);
+                        listing.Label(GetIrodoriEffectivePawnSummary(voiceModels[i].ModelId));
+                        GUI.color = Color.white;
+                        Text.Font = GameFont.Small;
+                    }
                 }
             }
 
@@ -1039,6 +1074,176 @@ namespace RimTalk.TTS.UI
             }
         }
 
+        private static void DrawIrodoriConfigSection(Listing_Standard listing, TTSSettings settings)
+        {
+            var cfg = settings.Irodori ?? (settings.Irodori = new IrodoriSettings());
+            Text.Font = GameFont.Medium;
+            listing.Label("Irodori-TTS v4");
+            Text.Font = GameFont.Small;
+
+            listing.Label("Base URL (official default: http://127.0.0.1:8088/v1)");
+            string baseUrl = listing.TextEntry(cfg.BaseUrl ?? "");
+            if (baseUrl != cfg.BaseUrl) { cfg.BaseUrl = baseUrl; TTSService.SetProvider(settings.Supplier, settings); }
+
+            string model = settings.GetSupplierModel(settings.Supplier);
+            if (string.IsNullOrWhiteSpace(model)) model = "irodori-tts";
+            listing.Label("Model ID");
+            string newModel = listing.TextEntry(model);
+            if (newModel != model) settings.SetSupplierModel(settings.Supplier, newModel);
+
+            listing.Gap(6f);
+            Rect connRow = listing.GetRect(30f);
+            if (Widgets.ButtonText(new Rect(connRow.x, connRow.y, 150f, 30f), "Connection test"))
+            {
+                string key = settings.GetSupplierApiKey(settings.Supplier);
+                System.Threading.Tasks.Task.Run(async () =>
+                {
+                    bool ok = await Service.IrodoriService.IrodoriClient.CheckConnectionAsync(cfg.BaseUrl, key);
+                    EnqueueMessage(ok ? "Irodori connection OK" : "Irodori connection failed", ok ? MessageTypeDefOf.TaskCompletion : MessageTypeDefOf.RejectInput);
+                });
+            }
+            if (Widgets.ButtonText(new Rect(connRow.x + 160f, connRow.y, 150f, 30f), "Sync server voices"))
+            {
+                string key = settings.GetSupplierApiKey(settings.Supplier);
+                System.Threading.Tasks.Task.Run(async () =>
+                {
+                    var list = await Service.IrodoriService.IrodoriClient.ListVoicesAsync(cfg.BaseUrl, key);
+                    EnqueueMainThreadAction(() =>
+                    {
+                        var voices = settings.GetSupplierVoiceModels(TTSSettings.TTSSupplier.Irodori) ?? new System.Collections.Generic.List<VoiceModel>();
+                        foreach (var v in list)
+                            if (!voices.Exists(x => x.ModelId == v.id)) voices.Add(new VoiceModel(v.id, v.name));
+                        settings.SetSupplierVoiceModels(TTSSettings.TTSSupplier.Irodori, voices);
+                        Messages.Message($"Irodori voices synced: {list.Count}", MessageTypeDefOf.TaskCompletion, false);
+                    });
+                });
+            }
+
+            listing.Gap(8f);
+            listing.Label("Upload reference audio to Irodori server (works with a remote/sub-PC server)");
+            listing.Label("Local audio file path");
+            irodoriUploadPathBuffer = listing.TextEntry(irodoriUploadPathBuffer ?? "");
+            listing.Label("Voice ID (ASCII letters/numbers/_/-; blank = filename)");
+            irodoriUploadIdBuffer = listing.TextEntry(irodoriUploadIdBuffer ?? "");
+            if (listing.ButtonText("Upload / register voice"))
+            {
+                string path = irodoriUploadPathBuffer;
+                string id = irodoriUploadIdBuffer;
+                string key = settings.GetSupplierApiKey(settings.Supplier);
+                System.Threading.Tasks.Task.Run(async () =>
+                {
+                    string uploaded = await Service.IrodoriService.IrodoriClient.UploadVoiceAsync(cfg.BaseUrl, key, path, id);
+                    if (!string.IsNullOrWhiteSpace(uploaded))
+                    {
+                        EnqueueMainThreadAction(() =>
+                        {
+                            var voices = settings.GetSupplierVoiceModels(TTSSettings.TTSSupplier.Irodori) ?? new System.Collections.Generic.List<VoiceModel>();
+                            if (!voices.Exists(x => x.ModelId == uploaded)) voices.Add(new VoiceModel(uploaded, uploaded));
+                            settings.SetSupplierVoiceModels(TTSSettings.TTSSupplier.Irodori, voices);
+                            Messages.Message("Irodori voice uploaded: " + uploaded, MessageTypeDefOf.TaskCompletion, false);
+                        });
+                    }
+                    else EnqueueMessage("Irodori voice upload failed", MessageTypeDefOf.RejectInput);
+                });
+            }
+
+            listing.Gap(10f);
+            listing.Label("Response format");
+            cfg.ResponseFormat = listing.TextEntry(cfg.ResponseFormat ?? "wav");
+            listing.CheckboxLabeled("SSE streaming transport (collected into one WAV before RimWorld playback)", ref cfg.UseSse);
+            listing.CheckboxLabeled("Map RimTalk emotion -> Irodori caption", ref cfg.EmotionToCaption);
+            listing.CheckboxLabeled("Also map known emotions -> Irodori emoji style control", ref cfg.EmotionToEmoji);
+
+            listing.Gap(10f);
+            Text.Font = GameFont.Medium;
+            listing.Label("Fast path: RimTalk LLM -> Irodori TTS");
+            Text.Font = GameFont.Small;
+            listing.CheckboxLabeled("Generate Irodori delivery metadata in RimTalk's first LLM response (3 API calls -> 2)", ref cfg.UnifiedTtsEnabled);
+            if (cfg.UnifiedTtsEnabled)
+            {
+                listing.Label("RimTalk's generated text is used directly as TTS text. A hidden ASCII [[RTTTS:...]] prefix carries only the delivery caption and is stripped before display/history.");
+                listing.CheckboxLabeled("Fallback to legacy TTS preprocessing LLM if the model misses the marker (recommended)", ref cfg.UnifiedTtsFallbackToLegacy);
+                listing.CheckboxLabeled("Strip parenthesized/bracketed stage directions locally from TTS input", ref cfg.UnifiedTtsStripStageDirections);
+                listing.CheckboxLabeled("Debug log fast-path capture/use", ref cfg.UnifiedTtsDebugLogging);
+                listing.Label("Extra instruction for the first RimTalk LLM (optional)");
+                Rect fastExtra = listing.GetRect(90f);
+                cfg.UnifiedTtsExtraInstruction = Widgets.TextArea(fastExtra, cfg.UnifiedTtsExtraInstruction ?? "");
+            }
+
+            listing.Gap(6f);
+            listing.Label("Caption prefix (optional persistent voice direction)");
+            cfg.CaptionPrefix = listing.TextEntry(cfg.CaptionPrefix ?? "");
+            listing.Label("Global LoRA adapter (optional)");
+            cfg.GlobalLoraAdapter = listing.TextEntry(cfg.GlobalLoraAdapter ?? "");
+
+            listing.Gap(8f);
+            listing.Label($"num_steps: {cfg.NumSteps}");
+            cfg.NumSteps = (int)listing.Slider(cfg.NumSteps, 1f, 100f);
+            listing.Label("t_schedule_mode (linear / sway)");
+            cfg.TScheduleMode = listing.TextEntry(cfg.TScheduleMode ?? "linear");
+            listing.Label($"sway_coeff: {cfg.SwayCoeff:F2}");
+            cfg.SwayCoeff = listing.Slider(cfg.SwayCoeff, -5f, 5f);
+            listing.Label($"duration_scale: {cfg.DurationScale:F2}");
+            cfg.DurationScale = listing.Slider(cfg.DurationScale, 0.25f, 3f);
+            listing.Label($"cfg_scale_text: {cfg.CfgScaleText:F2}");
+            cfg.CfgScaleText = listing.Slider(cfg.CfgScaleText, 0f, 12f);
+            listing.Label($"cfg_scale_speaker: {cfg.CfgScaleSpeaker:F2}");
+            cfg.CfgScaleSpeaker = listing.Slider(cfg.CfgScaleSpeaker, 0f, 12f);
+            listing.Label($"cfg_scale_caption: {cfg.CfgScaleCaption:F2} (0 = omit)");
+            cfg.CfgScaleCaption = listing.Slider(cfg.CfgScaleCaption, 0f, 12f);
+            listing.Label("cfg_guidance_mode (independent / joint / alternating)");
+            cfg.CfgGuidanceMode = listing.TextEntry(cfg.CfgGuidanceMode ?? "independent");
+            listing.Label($"max_ref_seconds: {cfg.MaxRefSeconds:F0}");
+            cfg.MaxRefSeconds = listing.Slider(cfg.MaxRefSeconds, 1f, 180f);
+            listing.Label("seed (-1 = random/omit)");
+            string seedText = listing.TextEntry(cfg.Seed.ToString());
+            if (int.TryParse(seedText, out int seed)) cfg.Seed = seed;
+
+            listing.Gap(8f);
+            listing.CheckboxLabeled("Irodori server-side text chunking", ref cfg.ChunkingEnabled);
+            listing.Label($"chunk_min_chars: {cfg.ChunkMinChars}");
+            cfg.ChunkMinChars = (int)listing.Slider(cfg.ChunkMinChars, 1f, 500f);
+            listing.Label("first_sentence_chunk_min_chars (0 = omit)");
+            string firstChunk = listing.TextEntry(cfg.FirstSentenceChunkMinChars.ToString());
+            if (int.TryParse(firstChunk, out int f)) cfg.FirstSentenceChunkMinChars = System.Math.Max(0, f);
+
+            listing.Gap(10f);
+            listing.Label("Advanced irodori JSON object (merged LAST; overrides fields above and supports every current/future request option)");
+            Rect adv = listing.GetRect(160f);
+            cfg.AdvancedOptionsJson = Widgets.TextArea(adv, cfg.AdvancedOptionsJson ?? "{}");
+            listing.Label("Examples: {\"num_candidates\":2,\"decode_mode\":\"batch\",\"truncation_factor\":0.8,\"context_kv_cache\":true}");
+        }
+
+
+        private static string GetIrodoriEffectivePawnSummary(string voiceId)
+        {
+            if (string.IsNullOrWhiteSpace(voiceId) || Current.Game == null)
+                return "Currently used by pawns: (none loaded)";
+
+            try
+            {
+                var names = new System.Collections.Generic.List<string>();
+                var player = global::RimTalk.Data.Cache.GetPlayer();
+                foreach (var pawn in global::RimTalk.Data.Cache.Keys)
+                {
+                    if (pawn == null || pawn == player) continue;
+                    string resolved = PawnVoiceManager.GetVoiceModel(pawn);
+                    if (resolved == voiceId)
+                        names.Add(pawn.LabelShort ?? pawn.Name?.ToStringShort ?? "(unnamed)");
+                }
+
+                names = names.Distinct().OrderBy(x => x).ToList();
+                if (names.Count == 0) return "Currently used by pawns: (none)";
+                string shown = string.Join(", ", names.Take(8));
+                if (names.Count > 8) shown += $" (+{names.Count - 8} more)";
+                return "Currently used by pawns: " + shown;
+            }
+            catch (System.Exception ex)
+            {
+                return "Currently used by pawns: (unavailable: " + ex.Message + ")";
+            }
+        }
+
         private static void DrawApiConfigSection(Listing_Standard listing, TTSSettings settings)
         {
             Text.Font = GameFont.Medium;
@@ -1099,6 +1304,7 @@ namespace RimTalk.TTS.UI
                 TTSSettings.TTSSupplier.AzureTTS => "RimTalk.Settings.TTS.TTSSupplier.AzureTTS".Translate(),
                 TTSSettings.TTSSupplier.EdgeTTS => "RimTalk.Settings.TTS.TTSSupplier.EdgeTTS".Translate(),
                 TTSSettings.TTSSupplier.GeminiTTS => "RimTalk.Settings.TTS.TTSSupplier.GeminiTTS".Translate(),
+                TTSSettings.TTSSupplier.Irodori => "Irodori TTS",
                 TTSSettings.TTSSupplier.TTSWebUI => "RimTalk.Settings.TTS.TTSSupplier.TTSWebUI".Translate(),
                 TTSSettings.TTSSupplier.None => "RimTalk.Settings.TTS.None".Translate(),
                 _ => supplier.ToString(),

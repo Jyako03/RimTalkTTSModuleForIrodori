@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <RimTalk.Settings.TTS.TTSSupplier.Irodori>Irodori TTS</RimTalk.Settings.TTS.TTSSupplier.Irodori>
+  <RimTalk.Settings.TTS.ShowDebugControlButtons>デバッグ・操作ボタンを表示</RimTalk.Settings.TTS.ShowDebugControlButtons>
+  <RimTalk.Settings.TTS.ShowDebugControlButtonsTooltip>画面上部の Display next / Ignore existing dialogues / Generate dialogue / Audio clear を表示します。通常プレイではOFF推奨です。</RimTalk.Settings.TTS.ShowDebugControlButtonsTooltip>
+  <RimTalk.TTS.VoiceLab.Open>Voice Lab</RimTalk.TTS.VoiceLab.Open>
+  <RimTalk.TTS.VoiceLab.Title>Irodori Voice Lab - {0}</RimTalk.TTS.VoiceLab.Title>
+  <RimTalk.TTS.VoiceLab.IrodoriOnly>Voice Lab は Irodori TTS 選択時のみ使用できます。</RimTalk.TTS.VoiceLab.IrodoriOnly>
+  <RimTalk.TTS.VoiceLab.Description>最近のRimTalk会話を試聴文にしてVoice Design候補を生成します。気に入った候補はIrodoriの参照音声として登録され、このPawnへ割り当てられます。</RimTalk.TTS.VoiceLab.Description>
+  <RimTalk.TTS.VoiceLab.RecentLines>最近の会話</RimTalk.TTS.VoiceLab.RecentLines>
+  <RimTalk.TTS.VoiceLab.Refresh>更新</RimTalk.TTS.VoiceLab.Refresh>
+  <RimTalk.TTS.VoiceLab.NoRecent>このPawnの最近の会話がまだありません。試聴文は下欄へ直接入力できます。</RimTalk.TTS.VoiceLab.NoRecent>
+  <RimTalk.TTS.VoiceLab.SampleText>試聴文</RimTalk.TTS.VoiceLab.SampleText>
+  <RimTalk.TTS.VoiceLab.VoiceDescription>声質の説明（新しいVoice Profileに保存）</RimTalk.TTS.VoiceLab.VoiceDescription>
+  <RimTalk.TTS.VoiceLab.DeliveryHint>今回の話し方ヒント（会話から自動取得）</RimTalk.TTS.VoiceLab.DeliveryHint>
+  <RimTalk.TTS.VoiceLab.ProfileName>Profile名</RimTalk.TTS.VoiceLab.ProfileName>
+  <RimTalk.TTS.VoiceLab.RandomSeed>ランダム</RimTalk.TTS.VoiceLab.RandomSeed>
+  <RimTalk.TTS.VoiceLab.Generate>候補を生成</RimTalk.TTS.VoiceLab.Generate>
+  <RimTalk.TTS.VoiceLab.Generating>生成中...</RimTalk.TTS.VoiceLab.Generating>
+  <RimTalk.TTS.VoiceLab.Candidates>生成候補</RimTalk.TTS.VoiceLab.Candidates>
+  <RimTalk.TTS.VoiceLab.NoCandidates>まだ候補がありません。Seedを変えながら生成して比較できます。</RimTalk.TTS.VoiceLab.NoCandidates>
+  <RimTalk.TTS.VoiceLab.Play>再生</RimTalk.TTS.VoiceLab.Play>
+  <RimTalk.TTS.VoiceLab.UseReference>参照音声に採用</RimTalk.TTS.VoiceLab.UseReference>
+  <RimTalk.TTS.VoiceLab.Uploading>登録中...</RimTalk.TTS.VoiceLab.Uploading>
+  <RimTalk.TTS.VoiceLab.EmptyText>試聴文が空です。</RimTalk.TTS.VoiceLab.EmptyText>
+  <RimTalk.TTS.VoiceLab.Generated>候補を生成しました。seed={0}</RimTalk.TTS.VoiceLab.Generated>
+  <RimTalk.TTS.VoiceLab.Adopted>{0} を参照音声として登録しました (Irodori ID: {1})</RimTalk.TTS.VoiceLab.Adopted>
+  <RimTalk.TTS.VoiceLab.AdoptedMessage>{0} のVoiceを「{1}」へ変更しました。</RimTalk.TTS.VoiceLab.AdoptedMessage>
+  <RimTalk.TTS.VoicePreview.SampleLabel>試聴サンプル文</RimTalk.TTS.VoicePreview.SampleLabel>
+  <RimTalk.TTS.VoicePreview.SampleHint>各Voiceの試聴に使用する文章です。変更内容はSaveで保存されます。</RimTalk.TTS.VoicePreview.SampleHint>
+  <RimTalk.TTS.VoicePreview.SampleText>こんにちは。声の確認です。今日もよろしくお願いします。</RimTalk.TTS.VoicePreview.SampleText>
+  <RimTalk.TTS.VoicePreview.Failed>音声プレビューの生成に失敗しました。ログを確認してください。</RimTalk.TTS.VoicePreview.Failed>
+</LanguageData>

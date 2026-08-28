@@ -1,10 +1,18 @@
-RimTalkMainModule/
-Source/obj/
-rimtalk/
-DeleteReferenceVoice.md
-GetReferenceVoiceList.md
-ReferenceVoiceUpload.md
-SiliconFlowTTSModelGuide.md
-TTSRequest.md
-Textures/UI/ToggleButton.dds.zstd
-Textures/UI/VoiceSettings.dds.zstd
+# .NET build
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# Built RimWorld assembly
+1.6/Assemblies/RimTalk.TTS.dll
+
+# Temporary / backup
+*.bak
+*.tmp
+*.log
+
+# Python cache
+__pycache__/
+*.pyc

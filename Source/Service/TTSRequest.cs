@@ -11,6 +11,10 @@ namespace RimTalk.TTS.Service
         public string Input { get; set; }
         public string InstructText { get; set; }
 
+        // Structured emotion/style produced by RimTalk TTS preprocessing.
+        // Irodori consumes this through caption and optional emoji style control.
+        public string Emotion { get; set; }
+
         // voice URI or preset (can be empty string for dynamic references)
         public string Voice { get; set; }
 

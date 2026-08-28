@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using RimTalk.Service;
+using RimTalk.Prompt;
 using Verse;
 using RimTalk.TTS.Service;
 using RimTalk.Data;
@@ -17,6 +18,90 @@ namespace RimTalk.TTS.Patch
     /// Harmony patches to hook into main RimTalk events
     /// Simplified version that only patches CreateInteraction for TTS generation and playback
     /// </summary>
+        /// <summary>
+        /// Optional unified fast path: append a compact TTS envelope instruction to RimTalk's
+        /// existing prompt so the first LLM response already contains Irodori delivery metadata.
+        /// </summary>
+        [HarmonyPatch(typeof(PromptManager), nameof(PromptManager.BuildMessages))]
+        public static class UnifiedTtsPromptInjection_Patch
+        {
+            static void Postfix(ref List<(Role role, string content)> __result)
+            {
+                try
+                {
+                    var settings = TTSConfig.Settings;
+                    if (!UnifiedTtsPayloadStore.IsEnabled(settings) || __result == null || __result.Count == 0)
+                        return;
+
+                    string instruction = UnifiedTtsPayloadStore.BuildPromptInstruction(settings);
+                    if (string.IsNullOrWhiteSpace(instruction)) return;
+
+                    // Prefer the final System message in the initial System block. Do not append a
+                    // new System message after User messages because several RP models reject that.
+                    int firstNonSystem = __result.FindIndex(m => m.role != Role.System);
+                    int targetIndex = firstNonSystem > 0 ? firstNonSystem - 1 : -1;
+
+                    if (targetIndex >= 0)
+                    {
+                        var current = __result[targetIndex];
+                        __result[targetIndex] = (current.role, current.content + "\n\n" + instruction);
+                    }
+                    else
+                    {
+                        // No initial System block: prepend to the first existing message while
+                        // preserving its role and therefore preserving the model's role sequence.
+                        var current = __result[0];
+                        __result[0] = (current.role, instruction + "\n\n" + current.content);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[RimTalk.TTS] Unified prompt injection failed: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Keep RimTalk's normal API response log free of the hidden fast-path prefix. This only
+        /// changes the string passed to ApiHistory; the original TalkResponse still carries the
+        /// marker until QueueIncomingResponse captures its emotion metadata.
+        /// </summary>
+        [HarmonyPatch(typeof(ApiHistory), nameof(ApiHistory.AddResponse))]
+        public static class UnifiedTtsApiHistory_Patch
+        {
+            static void Prefix(ref string response)
+            {
+                try
+                {
+                    if (!UnifiedTtsPayloadStore.IsEnabled(TTSConfig.Settings)) return;
+                    if (UnifiedTtsPayloadStore.TryStripEnvelopeForDisplay(response, out var clean))
+                        response = clean;
+                }
+                catch { }
+            }
+        }
+
+        /// <summary>
+        /// Capture the machine prefix on the same TalkResponse object before RimTalk queues it.
+        /// The prefix is stripped here, so normal display and serialized chat history see only the
+        /// actual dialogue text.
+        /// </summary>
+        [HarmonyPatch(typeof(PawnState), nameof(PawnState.QueueIncomingResponse))]
+        public static class UnifiedTtsCapture_Patch
+        {
+            static void Prefix(TalkResponse talkResponse)
+            {
+                try
+                {
+                    UnifiedTtsPayloadStore.CaptureAndStrip(talkResponse, TTSConfig.Settings);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[RimTalk.TTS] Unified payload capture failed: {ex.Message}");
+                }
+            }
+        }
+
     public static class RimTalkPatches
     {
         // Note: RimTalk types are now referenced directly via assembly reference
@@ -272,8 +357,15 @@ namespace RimTalk.TTS.Patch
                     var dialogueId = item.Id;
                     var text = item.Text;
 
+                    // Voice Lab keeps a small session-local cache of actual RimTalk lines.
+                    // Capture here before TTSService consumes the fast-path emotion payload.
+                    RecentDialogueStore.Capture(pawn, item);
+
                     if (PawnVoiceManager.GetVoiceModel(pawn) == VoiceModel.NONE_MODEL_ID)
+                    {
+                        UnifiedTtsPayloadStore.Remove(dialogueId);
                         return;
+                    }
 
                     // Immediately mark dialogue as "generating" to block display
                     RequestBlock(dialogueId);

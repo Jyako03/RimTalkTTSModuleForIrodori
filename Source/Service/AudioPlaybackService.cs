@@ -22,6 +22,11 @@ public static class AudioPlaybackService
     
     // === Playback Control ===
     private static bool _isPlaying = false;
+    // Preview playback is lower priority than normal RimTalk dialogue. A generation token
+    // lets a new preview invalidate an older async preview without the old finally block
+    // clearing the state of the newly-started preview.
+    private static bool _isPreviewPlaying = false;
+    private static int _previewPlaybackVersion = 0;
     private static readonly object _lock = new object();
 
     /// <summary>
@@ -187,6 +192,131 @@ public static class AudioPlaybackService
     }
 
     /// <summary>
+    /// Play an in-memory audition clip from Voice Lab. It shares the normal TTS AudioSource so
+    /// previews cannot overlap regular dialogue playback.
+    /// </summary>
+    /// <summary>
+    /// Stop only audition/preview audio. Normal RimTalk dialogue playback is never interrupted by
+    /// this method. Calling it while a preview is still loading also invalidates that pending load.
+    /// </summary>
+    public static void StopPreviewAudio()
+    {
+        lock (_lock)
+        {
+            if (!_isPreviewPlaying)
+            {
+                // Still bump the token so a preview that has not reached its playing state yet can
+                // be invalidated by a new BIO preview request.
+                _previewPlaybackVersion++;
+                return;
+            }
+
+            _previewPlaybackVersion++;
+            _isPreviewPlaying = false;
+            _isPlaying = false;
+            try
+            {
+                if (_audioSource != null && _audioSource.isPlaying)
+                    _audioSource.Stop();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[RimTalk.TTS/Preview] Failed to stop preview audio: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Play an in-memory audition clip. Pressing another preview button interrupts the current
+    /// preview immediately and starts the newly selected one. Normal RimTalk dialogue keeps higher
+    /// priority: if regular dialogue is playing, a preview request is skipped rather than cutting it.
+    /// </summary>
+    public static async void PlayPreviewAudio(byte[] audioData, float volume = 1.0f)
+    {
+        if (audioData == null || audioData.Length == 0) return;
+
+        int myVersion;
+        lock (_lock)
+        {
+            if (_isPlaying && !_isPreviewPlaying)
+            {
+                Log.Message("[RimTalk.TTS/Preview] Regular dialogue is playing; preview skipped.");
+                return;
+            }
+
+            // Invalidate any older preview load/playback. If it is already audible, stop it now.
+            _previewPlaybackVersion++;
+            myVersion = _previewPlaybackVersion;
+            if (_isPreviewPlaying)
+            {
+                try
+                {
+                    if (_audioSource != null && _audioSource.isPlaying)
+                        _audioSource.Stop();
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[RimTalk.TTS/Preview] Failed to interrupt old preview: {ex.Message}");
+                }
+            }
+
+            _isPlaying = true;
+            _isPreviewPlaying = true;
+        }
+
+        try
+        {
+            AudioClip clip = await LoadAudioClipFromData(audioData, "irodori_preview");
+            if (clip == null || clip.length <= 0f)
+            {
+                Log.Warning("[RimTalk.TTS/Preview] Failed to create preview AudioClip.");
+                return;
+            }
+
+            lock (_lock)
+            {
+                if (!_isPreviewPlaying || myVersion != _previewPlaybackVersion)
+                    return; // A newer preview button was pressed while this clip was loading.
+            }
+
+            _audioSource.clip = clip;
+            _audioSource.volume = UnityEngine.Mathf.Clamp01(volume);
+            _audioSource.Play();
+
+            // Poll in short intervals so a superseding preview does not have to wait for this clip's
+            // original duration before the old async method exits.
+            int remainingMs = Math.Max(50, (int)(clip.length * 1000f));
+            while (remainingMs > 0)
+            {
+                int slice = Math.Min(50, remainingMs);
+                await Task.Delay(slice);
+                remainingMs -= slice;
+                lock (_lock)
+                {
+                    if (!_isPreviewPlaying || myVersion != _previewPlaybackVersion)
+                        return;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[RimTalk.TTS/Preview] Preview playback failed: {ex}");
+        }
+        finally
+        {
+            lock (_lock)
+            {
+                // Never let an older preview's finally block clear a newer preview's state.
+                if (myVersion == _previewPlaybackVersion)
+                {
+                    _isPreviewPlaying = false;
+                    _isPlaying = false;
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Complete reset of audio system - ONLY call when exiting/loading save game.
     /// Clears all state and resets sequences to allow fresh start.
     /// </summary>
@@ -198,7 +328,10 @@ public static class AudioPlaybackService
             _dialogueAudio.Clear();
             
             // Reset all counters and flags
+            _previewPlaybackVersion++;
+            _isPreviewPlaying = false;
             _isPlaying = false;
+            try { if (_audioSource != null && _audioSource.isPlaying) _audioSource.Stop(); } catch { }
         }
     }
 

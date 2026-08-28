@@ -35,6 +35,7 @@ namespace RimTalk.TTS.Patch
                 {
                     if (__instance == null) return;
                     if (!TTSConfig.IsEnabled) return;
+                    if (!(TTSConfig.Settings?.ShowDebugControlButtons ?? false)) return;
 
                     var overlayType = __instance.GetType();
 
@@ -90,6 +91,7 @@ namespace RimTalk.TTS.Patch
             static bool Prefix(object __instance)
             {
                 if (!TTSConfig.IsEnabled) return true;
+                if (!(TTSConfig.Settings?.ShowDebugControlButtons ?? false)) return true;
                 if (__instance == null) return true;
                 
                 Event currentEvent = Event.current;

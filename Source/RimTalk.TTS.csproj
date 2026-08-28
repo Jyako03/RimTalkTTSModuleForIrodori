@@ -10,6 +10,7 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
         <RimWorldDir Condition=" '$(RimWorldDir)' == '' ">$(RIMWORLD_DIR)</RimWorldDir>
+        <RimTalkDir Condition=" '$(RimTalkDir)' == '' ">$(RIMTALK_DIR)</RimTalkDir>
 
         <OutputPath>../1.6/Assemblies</OutputPath>
         <LangVersion>default</LangVersion>
@@ -37,7 +38,7 @@
     <!-- Reference to RimTalk mod assembly for compilation (provided by game/mod at runtime) -->
     <ItemGroup>
         <Reference Include="RimTalk">
-            <HintPath>D:\steam\steamapps\common\RimWorld\Mods\rimtalk\1.6\Assemblies\RimTalk.dll</HintPath>
+            <HintPath>F:\SteamLibrary\steamapps\common\RimWorld\Mods\3551203752\1.6\Assemblies\RimTalk.dll</HintPath>
             <!-- Do not copy the assembly into our output; the game loads mod assemblies from its folder. -->
             <Private>false</Private>
         </Reference>

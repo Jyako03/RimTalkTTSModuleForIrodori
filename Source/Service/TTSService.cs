@@ -90,6 +90,8 @@ namespace RimTalk.TTS.Service
                     return new Provider.EdgeTTSProvider();
                 case TTSSettings.TTSSupplier.GeminiTTS:
                     return new Provider.GeminiTTSProvider();
+                case TTSSettings.TTSSupplier.Irodori:
+                    return new Provider.IrodoriProvider(settings);
                 case TTSSettings.TTSSupplier.TTSWebUI:
                     var ttsWebUIProvider = new Provider.TTSWebUIProvider();
                     if (settings != null)
@@ -217,13 +219,45 @@ namespace RimTalk.TTS.Service
                 string voiceModelId = GetVoiceModelId(pawn, settings);
 
                 // Process and translate text (using pawn-specific language if set)
-                string finalInputText = await ProcessTextAsync(text, pawn, dialogueId, settings);
-                if (finalInputText == null)
+                PreProcessResult preProcessResult = null;
+                bool usedUnifiedFastPath = false;
+
+                if (UnifiedTtsPayloadStore.IsEnabled(settings))
+                {
+                    if (UnifiedTtsPayloadStore.TryTake(dialogueId, out var unifiedPayload))
+                    {
+                        preProcessResult = new PreProcessResult
+                        {
+                            Text = unifiedPayload.Text,
+                            Emotion = unifiedPayload.Emotion
+                        };
+                        usedUnifiedFastPath = true;
+                    }
+                    else if (!(settings.Irodori?.UnifiedTtsFallbackToLegacy ?? true))
+                    {
+                        preProcessResult = new PreProcessResult
+                        {
+                            Text = UnifiedTtsPayloadStore.SanitizeForTts(text, settings),
+                            Emotion = string.Empty
+                        };
+                        usedUnifiedFastPath = true;
+                    }
+                }
+
+                if (preProcessResult == null)
+                    preProcessResult = await ProcessTextAsync(text, pawn, dialogueId, settings);
+
+                if (preProcessResult == null || string.IsNullOrEmpty(preProcessResult.Text))
                 {
                     CleanupAndRelease(dialogueId);
                     return;
                 }
 
+                if (usedUnifiedFastPath && settings.Irodori?.UnifiedTtsDebugLogging == true)
+                    Log.Message($"[RimTalk.TTS] Unified fast path used for dialogue {dialogueId}; preprocessing LLM skipped.");
+
+                string finalInputText = preProcessResult.Text;
+                string finalEmotion = preProcessResult.Emotion ?? string.Empty;
                 string finalInstructText = null;
 
                 // Check if should continue after preprocessing
@@ -238,7 +272,7 @@ namespace RimTalk.TTS.Service
                 await ApplyCooldownAsync(settings);
                 
                 // Generate speech
-                byte[] audioData = await GenerateSpeechAsync(voiceModelId, finalInputText, finalInstructText, settings);
+                byte[] audioData = await GenerateSpeechAsync(voiceModelId, finalInputText, finalInstructText, finalEmotion, settings);
 
                 // Final validation and playback setup
                 HandleGenerationResult(dialogueId, audioData, settings);
@@ -258,7 +292,7 @@ namespace RimTalk.TTS.Service
         /// <summary>
         /// Process and translate text if needed
         /// </summary>
-        private static async Task<string> ProcessTextAsync(string text, Pawn pawn, Guid dialogueId, TTSSettings settings)
+        private static async Task<PreProcessResult> ProcessTextAsync(string text, Pawn pawn, Guid dialogueId, TTSSettings settings)
         {
             // Get effective language for this pawn (pawn-specific or global fallback)
             string language = Data.PawnVoiceManager.GetEffectiveLanguage(pawn, settings);
@@ -269,7 +303,7 @@ namespace RimTalk.TTS.Service
                 
                 if (preProcessResult != null && !string.IsNullOrEmpty(preProcessResult.Text))
                 {
-                    return preProcessResult.Text;
+                    return preProcessResult;
                 }
                 else
                 {
@@ -313,7 +347,7 @@ namespace RimTalk.TTS.Service
         /// <summary>
         /// Generate speech using configured provider
         /// </summary>
-        private static async Task<byte[]> GenerateSpeechAsync(string voiceModelId, string inputText, string instructText, TTSSettings settings)
+        private static async Task<byte[]> GenerateSpeechAsync(string voiceModelId, string inputText, string instructText, string emotion, TTSSettings settings)
         {
             var ttsRequest = new Service.TTSRequest
             {
@@ -321,6 +355,7 @@ namespace RimTalk.TTS.Service
                 Model = settings.GetSupplierModel(settings.Supplier),
                 Input = inputText,
                 InstructText = instructText,
+                Emotion = emotion,
                 Voice = voiceModelId,
                 Speed = settings.GetSupplierSpeed(settings.Supplier),
                 Volume = settings.GetSupplierVolume(settings.Supplier),
@@ -375,6 +410,7 @@ namespace RimTalk.TTS.Service
         // Merge common cleanup + release pattern into one helper to simplify call sites
         private static void CleanupAndRelease(Guid dialogueId)
         {
+            UnifiedTtsPayloadStore.Remove(dialogueId);
             CleanupFailedDialogue(dialogueId);
             RimTalkPatches.ReleaseBlock(dialogueId);
         }
@@ -410,6 +446,7 @@ namespace RimTalk.TTS.Service
 
         public static void StopAll(bool permanentShutdown = false)
         {
+            UnifiedTtsPayloadStore.Clear();
             if (permanentShutdown)
             {
                 _isShuttingDown = true;
@@ -443,6 +480,7 @@ namespace RimTalk.TTS.Service
         public static void CancelDialogue(Guid dialogueId)
         {
             if (dialogueId == Guid.Empty) return;
+            UnifiedTtsPayloadStore.Remove(dialogueId);
             
             if (RimTalkPatches.IsBlocked(dialogueId))
             {

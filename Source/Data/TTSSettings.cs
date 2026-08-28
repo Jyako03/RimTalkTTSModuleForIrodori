@@ -11,6 +11,9 @@ namespace RimTalk.TTS.Data
         // Player reference voice model id (null/empty = use supplier default, VoiceModel.NONE_MODEL_ID = none)
         public string PlayerReferenceVoiceModelId = VoiceModel.NONE_MODEL_ID;
 
+        // Dedicated request-side Irodori-TTS v4 settings.
+        public IrodoriSettings Irodori = new IrodoriSettings();
+
         public enum TTSSupplier
         {
             None,
@@ -20,6 +23,7 @@ namespace RimTalk.TTS.Data
             AzureTTS,
             EdgeTTS,
             GeminiTTS,
+            Irodori,
             TTSWebUI
         }
 
@@ -62,6 +66,9 @@ namespace RimTalk.TTS.Data
         
         // Custom TTS processing prompt (empty = use default from TTSConstant)
         public string CustomTTSProcessingPrompt = "";
+
+        // BIO > Voice audition sentence for Irodori. Empty means use the localized default.
+        public string IrodoriVoicePreviewSampleText = "";
         
         // Remove bracketed content during preprocessing
         public bool RemoveBracketsInPreProcess = false;
@@ -72,6 +79,9 @@ namespace RimTalk.TTS.Data
         public float TTSSpeed = 1.0f; // TTS playback speed (0.25-4.0)//Deprecated
 
         public bool ButtonDisplay = true;
+
+        // Independent from the bottom-right TTS on/off widget. Controls the four overlay debug/control buttons.
+        public bool ShowDebugControlButtons = false;
 
         public bool isOnButton = true;
         
@@ -112,6 +122,7 @@ namespace RimTalk.TTS.Data
             Scribe_Values.Look(ref TTSTranslationLanguage, "ttsTranslationLanguage", "");
             Scribe_Values.Look(ref DefaultVoiceModelId, "defaultVoiceModelId", "");
             Scribe_Values.Look(ref CustomTTSProcessingPrompt, "customTTSProcessingPrompt", "");
+            Scribe_Values.Look(ref IrodoriVoicePreviewSampleText, "irodoriVoicePreviewSampleText", "");
             Scribe_Values.Look(ref TTSModel, "ttsModel", "s1");
             Scribe_Values.Look(ref TTSTemperature, "ttsTemperature", 0.9f);
             Scribe_Values.Look(ref TTSTopP, "ttsTopP", 0.9f);
@@ -119,6 +130,7 @@ namespace RimTalk.TTS.Data
             Scribe_Values.Look(ref TTSSpeed, "ttsSpeed", DEFAULT_SUPPLIER_SPEED);
             Scribe_Values.Look(ref GenerateCooldownMiliSeconds, "generateCooldownMiliSeconds", DEFAULT_GENERATE_COOLDOWN_MS);
             Scribe_Values.Look(ref ButtonDisplay, "buttonDisplay", true);
+            Scribe_Values.Look(ref ShowDebugControlButtons, "showDebugControlButtons", false);
             Scribe_Values.Look<TTSSupplier>(ref _supplier, "ttsSupplier", TTSSupplier.None);
             Scribe_Collections.Look(ref SupplierApiKeys, "supplierApiKeys", LookMode.Value, LookMode.Value);
             Scribe_Collections.Look(ref SupplierModels, "supplierModels", LookMode.Value, LookMode.Value);
@@ -133,6 +145,8 @@ namespace RimTalk.TTS.Data
             Scribe_Collections.Look(ref SupplierAdvancedMode, "supplierAdvancedMode", LookMode.Value, LookMode.Value);
             Scribe_Collections.Look(ref SupplierVoiceRules, "supplierVoiceRules", LookMode.Value, LookMode.Deep);
             Scribe_Values.Look(ref PlayerReferenceVoiceModelId, "playerReferenceVoiceModelId", VoiceModel.NONE_MODEL_ID);
+            Scribe_Deep.Look(ref Irodori, "irodoriSettings");
+            if (Irodori == null) Irodori = new IrodoriSettings();
 
             // LLM API configuration
             Scribe_Values.Look<TTSApiProvider>(ref ApiProvider, "apiProvider", TTSApiProvider.DeepSeek);

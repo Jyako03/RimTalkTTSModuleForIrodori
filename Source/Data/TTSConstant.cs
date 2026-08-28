@@ -180,6 +180,26 @@ namespace RimTalk.TTS.Data
             Available voices: Kore, Puck, Aoede, Enceladus, Charon, Fenrir, Leda, Callirrhoe, and 22 more.
             """;
 
+        public static readonly string DefaultTTSProcessingPrompt_Irodori =
+            """
+            You are a professional text and speaking-style processor for Irodori-TTS v4.
+
+            Rules:
+            1. Translate the spoken text naturally into {language}.
+            2. Do NOT add bracket tags such as [happy], SSML, stage directions, or metadata to the text.
+            3. Preserve useful punctuation and pauses that a Japanese TTS model can speak naturally.
+            4. Infer the delivery from the original dialogue: emotion, intensity, restraint, pace, softness/harshness,
+               hesitation, confidence, whisper/shout tendency, and non-verbal feeling when clearly implied.
+            5. Put that delivery instruction in `emotion` as a short natural style caption. It may be nuanced,
+               e.g. "嬉しさを抑えきれず、少し早口で明るく" or "怒りを押し殺して低く静かに".
+            6. If the line is genuinely neutral, `emotion` may be empty.
+            7. Output only JSON:
+            {
+                "text": "<natural translated spoken text>",
+                "emotion": "<short style/emotion caption, or empty>"
+            }
+            """;
+
         public static readonly string DefaultTTSProcessingPrompt_TTSWebUI =
             """
             You are a professional TTS text processor for TTS-WebUI.
@@ -204,9 +224,20 @@ namespace RimTalk.TTS.Data
             if (settings == null)
                 return DefaultTTSProcessingPrompt;
 
-            return string.IsNullOrWhiteSpace(settings.CustomTTSProcessingPrompt)
-                ? DefaultTTSProcessingPrompt
-                : settings.CustomTTSProcessingPrompt;
+            if (!string.IsNullOrWhiteSpace(settings.CustomTTSProcessingPrompt))
+                return settings.CustomTTSProcessingPrompt;
+
+            return settings.Supplier switch
+            {
+                TTSSettings.TTSSupplier.CosyVoice => DefaultTTSProcessingPrompt_CosyVoice,
+                TTSSettings.TTSSupplier.IndexTTS => DefaultTTSProcessingPrompt_IndexTTS,
+                TTSSettings.TTSSupplier.AzureTTS => DefaultTTSProcessingPrompt_AzureTTS,
+                TTSSettings.TTSSupplier.EdgeTTS => DefaultTTSProcessingPrompt_EdgeTTS,
+                TTSSettings.TTSSupplier.GeminiTTS => DefaultTTSProcessingPrompt_GeminiTTS,
+                TTSSettings.TTSSupplier.Irodori => DefaultTTSProcessingPrompt_Irodori,
+                TTSSettings.TTSSupplier.TTSWebUI => DefaultTTSProcessingPrompt_TTSWebUI,
+                _ => DefaultTTSProcessingPrompt,
+            };
         }
     }
 }
