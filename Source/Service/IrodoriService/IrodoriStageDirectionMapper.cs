@@ -103,6 +103,32 @@ namespace RimTalk.TTS.Service.IrodoriService
             return result;
         }
 
+        /// <summary>
+        /// Remove only stage directions that are understood as Irodori acting cues. Unknown
+        /// parentheticals/brackets remain visible so ordinary dialogue content is not lost.
+        /// This method is for RimTalk display/history; it deliberately does not normalize Unicode.
+        /// </summary>
+        public static string StripRecognizedForDisplay(string text, out int strippedCount)
+        {
+            strippedCount = 0;
+            if (string.IsNullOrWhiteSpace(text)) return text ?? string.Empty;
+
+            int count = 0;
+            string result = StageDirectionRegex.Replace(text, match =>
+            {
+                string stage = match.Groups["stage"].Value;
+                if (string.IsNullOrEmpty(MapStageDirection(stage)))
+                    return match.Value;
+
+                count++;
+                return string.Empty;
+            });
+
+            strippedCount = count;
+            result = Regex.Replace(result, @"[ \t]{2,}", " ").Trim();
+            return result;
+        }
+
         public static string MapStageDirection(string stageDirection)
         {
             if (string.IsNullOrWhiteSpace(stageDirection)) return string.Empty;
