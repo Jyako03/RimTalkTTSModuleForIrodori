@@ -38,7 +38,10 @@ namespace RimTalk.TTS.Service.IrodoriService
             "🌬️",  // shortness of breath / heavy breathing
             "😮",   // gasp
             "🤧",   // cough / sneeze / sniffle
-            "😭"    // crying / sobbing
+            "😭",   // crying / sobbing
+            "👅",   // licking / chewing / wet mouth sounds
+            "💋",   // lip noise / lip smack
+            "🤐"    // muffled / covered-mouth voice
         };
 
         // Legacy prose conversion rules. Kept broader than DirectControlEmojis so old/model-deviant
@@ -51,6 +54,9 @@ namespace RimTalk.TTS.Service.IrodoriService
             new CueRule("🤧", "咳払い", "せき払い", "咳き込", "せき込", "咳を", "せきを", "くしゃみ", "鼻をすす", "cough", "sneeze", "sniffle", "clear throat", "clears throat"),
             new CueRule("😭", "すすり泣", "嗚咽", "泣き声", "泣く", "泣いて", "泣きながら", "sobb", "crying", "cries"),
             new CueRule("🤭", "くすくす", "クスクス", "含み笑", "忍び笑", "笑い声", "笑う", "笑って", "笑いながら", "chuckle", "giggle", "laughs", "laughing"),
+            new CueRule("👅", "舐める", "舐めて", "舐めながら", "なめる", "なめて", "舌で舐め", "咀嚼音", "咀嚼", "もぐもぐ", "水音", "licking", "licks", "chewing", "wet mouth sound"),
+            new CueRule("💋", "リップノイズ", "唇を鳴ら", "唇をなら", "口を鳴ら", "口をなら", "lip smack", "lip-smack", "lip noise", "smacks lips"),
+            new CueRule("🤐", "口を塞", "口をふさ", "口を覆", "口をおお", "くぐもった声", "こもった声", "声がこも", "muffled", "covered mouth", "mouth covered"),
             new CueRule("😱", "悲鳴", "絶叫", "叫び声", "叫ぶ", "叫ん", "scream", "shriek", "shouts", "shouting"),
             new CueRule("🥱", "あくび", "欠伸", "yawn"),
             new CueRule("😒", "舌打ち", "舌を鳴ら", "tut", "clicks tongue", "clicking tongue"),
