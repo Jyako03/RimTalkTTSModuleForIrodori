@@ -8,6 +8,33 @@ using Verse;
 namespace RimTalk.TTS.Patch
 {
     /// <summary>
+    /// Keep the Fast Path prompt responsible only for the RTTTS machine envelope and delivery
+    /// caption. Dialogue-body policy (including Irodori inline controls) belongs to the active
+    /// RimTalk preset and must not be duplicated by the Mod.
+    ///
+    /// This compatibility patch only replaces one legacy sentence in BuildPromptInstruction that
+    /// used to explicitly permit prose stage directions in the dialogue body.
+    /// </summary>
+    [HarmonyPatch(typeof(UnifiedTtsPayloadStore), nameof(UnifiedTtsPayloadStore.BuildPromptInstruction))]
+    public static class IrodoriFastPathPromptIsolationPatch
+    {
+        private const string LegacyBodyPolicy =
+            "11. Do not add TTS tags, SSML, or a second copy of the dialogue. Stage directions that are required by the existing RimTalk style may remain in the dialogue; RimTalk TTS can remove them locally from spoken input.";
+
+        private const string IsolatedBodyPolicy =
+            "11. Do not add TTS tags, SSML, or a second copy of the dialogue. The dialogue body is governed by the active RimTalk preset; this Fast Path layer defines only the [[RTTTS:...]] envelope and delivery-caption metadata.";
+
+        [HarmonyPostfix]
+        public static void Postfix(ref string __result)
+        {
+            if (string.IsNullOrEmpty(__result))
+                return;
+
+            __result = __result.Replace(LegacyBodyPolicy, IsolatedBodyPolicy);
+        }
+    }
+
+    /// <summary>
     /// Backward-compatibility path only.
     ///
     /// Irodori-aware RimTalk presets are expected to emit supported inline control emojis directly.
