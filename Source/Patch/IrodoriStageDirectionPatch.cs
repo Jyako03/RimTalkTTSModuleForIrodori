@@ -62,7 +62,7 @@ namespace RimTalk.TTS.Patch
     /// <summary>
     /// Prefer Irodori's native inline emoji controls instead of asking the LLM for prose stage
     /// directions and trying to classify them afterwards. Whole-line delivery remains in RTTTS
-    /// caption; direct emojis are only for events/styles that need a precise position in the line.
+    /// caption; direct emojis are reserved for localized audible events/styles.
     /// </summary>
     [HarmonyPatch(typeof(UnifiedTtsPayloadStore), nameof(UnifiedTtsPayloadStore.BuildPromptInstruction))]
     public static class IrodoriStageDirectionPromptPatch
@@ -84,8 +84,8 @@ namespace RimTalk.TTS.Patch
                 }
 
                 __result += @"
-12. IRODORI INLINE ACTING CONTROL: For a genuinely audible event or a delivery change that must happen at a PRECISE position inside the spoken line, you MAY insert an Irodori control emoji DIRECTLY into <dialogue>. Use at most one or two per dialogue line, and never force them into every line.
-13. Use ONLY these control emojis when appropriate: 🤭 laughter/giggle, 😮‍💨 sigh/exhale, 🤧 cough/sneeze/sniffle, 😭 crying/sobbing, 😮 gasp, 🌬️ heavy/breathless breathing, 😱 scream/shout, 🥱 yawn, 😒 tongue-click/disdain, 🥵 groan/moan, 🎵 humming, ⏸️ deliberate pause, 👂 whisper, ⏩ fast speech, 🐢 slow speech, 😰 nervous/panicked, 🥺 trembling/timid, 🫣 shy/embarrassed, 🙄 exasperated, 😏 teasing, 🫶 gentle/tender, 😪 sleepy, 😠 angry, 😲 surprised, 😖 pained, 😟 worried, 😆 joyful, 😊 cheerful, 😎 confident/proud, 🙏 pleading, 🥴 drunk, 😌 relieved, 🤔 questioning/thoughtful, 💪 effortful/strong, 💥 forceful, 📖 narration/monologue.
+12. IRODORI INLINE ACTING CONTROL: For a genuinely audible event or localized delivery change that must happen at a PRECISE position inside the spoken line, you MAY insert an Irodori control emoji DIRECTLY into <dialogue>. Use at most one or two per dialogue line, and never force them into every line.
+13. Use ONLY this conservative inline set: 🤭 laughter/giggle; 😮‍💨 sigh/exhale/breath; 🤧 cough/sneeze/sniffle; 😭 crying/sobbing; 😮 gasp; 🌬️ heavy or breathless breathing; 🥵 panting/moan/groan; ⏸️ deliberate pause/silence; 👂 whisper/close-to-ear; 🥺 trembling/timid voice; 😏 teasing/coaxing. Do NOT use inline emojis merely for ordinary whole-line emotions such as happy, angry, calm, surprised, or sad; describe those in <delivery-caption> instead.
 14. These emojis are MACHINE CONTROLS: RimTalk TTS removes them from visible dialogue/history but preserves them in the text sent to Irodori. Place the emoji exactly where its effect should occur. Example: あははっ🤭、本気で言ってるの？…😮‍💨まあ、君らしいけどね。
 15. DO NOT write audible acting as prose stage directions such as （ため息）, (laughs), [whispers], *sigh*, etc. Never output both a prose stage direction and an emoji for the same event. Prefer the direct emoji control instead.
 16. Avoid parenthesized/bracketed physical-action narration inside the spoken text. Non-audible physical actions should normally be handled by the existing RimTalk interaction/context fields or omitted from the spoken line, not inserted mid-sentence in parentheses. Whole-line emotion, pace, intensity, and voice style still belong in <delivery-caption>.
