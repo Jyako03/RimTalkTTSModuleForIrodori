@@ -8,12 +8,14 @@ using Verse;
 namespace RimTalk.TTS.Patch
 {
     /// <summary>
-    /// Legacy compatibility only. New Fast Path output asks the LLM to emit Irodori acting emojis
-    /// directly. If a model still emits a recognizable prose stage direction, convert it here for
-    /// TTS while preserving the established sanitizer as the fail-open fallback.
+    /// Backward-compatibility path only.
+    ///
+    /// Irodori-aware RimTalk presets are expected to emit supported inline control emojis directly.
+    /// If an older preset or a model deviation still emits a recognizable prose stage direction,
+    /// convert it locally for TTS without making the Mod another source of generation rules.
     /// </summary>
     [HarmonyPatch(typeof(UnifiedTtsPayloadStore), nameof(UnifiedTtsPayloadStore.SanitizeForTts))]
-    public static class IrodoriStageDirectionSanitizePatch
+    public static class IrodoriLegacyStageDirectionSanitizePatch
     {
         [HarmonyPostfix]
         public static void Postfix(string text, TTSSettings settings, ref string __result)
@@ -31,8 +33,8 @@ namespace RimTalk.TTS.Patch
                     return;
                 }
 
-                // Direct Irodori emojis already survive SanitizeForTts unchanged, so only rebuild
-                // the text when a legacy prose stage direction was actually converted.
+                // Direct Irodori control emojis survive SanitizeForTts unchanged.
+                // Rebuild the TTS string only when a legacy prose cue was actually recognized.
                 string source = text;
                 if (UnifiedTtsPayloadStore.TryStripEnvelopeForDisplay(source, out string clean))
                     source = clean;
@@ -60,52 +62,15 @@ namespace RimTalk.TTS.Patch
     }
 
     /// <summary>
-    /// Prefer Irodori's native inline emoji controls instead of asking the LLM for prose stage
-    /// directions and trying to classify them afterwards. Whole-line delivery remains in RTTTS
-    /// caption; direct emojis are reserved for localized audible events/styles.
-    /// </summary>
-    [HarmonyPatch(typeof(UnifiedTtsPayloadStore), nameof(UnifiedTtsPayloadStore.BuildPromptInstruction))]
-    public static class IrodoriStageDirectionPromptPatch
-    {
-        [HarmonyPostfix]
-        public static void Postfix(TTSSettings settings, ref string __result)
-        {
-            try
-            {
-                var cfg = settings?.Irodori;
-                if (settings == null ||
-                    settings.Supplier != TTSSettings.TTSSupplier.Irodori ||
-                    cfg == null ||
-                    !cfg.UnifiedTtsEnabled ||
-                    !cfg.UnifiedTtsStripStageDirections ||
-                    string.IsNullOrEmpty(__result))
-                {
-                    return;
-                }
-
-                __result += @"
-12. IRODORI INLINE ACTING CONTROL: For a genuinely audible event or localized delivery change that must happen at a PRECISE position inside the spoken line, you MAY insert an Irodori control emoji DIRECTLY into <dialogue>. Use at most one or two per dialogue line, and never force them into every line.
-13. Use ONLY this conservative inline set: 🤭 laughter/giggle; 😮‍💨 sigh/exhale/breath; 🤧 cough/sneeze/sniffle; 😭 crying/sobbing; 😮 gasp; 🌬️ heavy or breathless breathing; 🥵 panting/moan/groan; ⏸️ deliberate pause/silence; 👂 whisper/close-to-ear; 🥺 trembling/timid voice; 😏 teasing/coaxing; 👅 licking/chewing/wet mouth sounds; 💋 lip noise/lip smack; 🤐 muffled/covered-mouth voice. Do NOT use inline emojis merely for ordinary whole-line emotions such as happy, angry, calm, surprised, or sad; describe those in <delivery-caption> instead.
-14. These emojis are MACHINE CONTROLS: RimTalk TTS removes them from visible dialogue/history but preserves them in the text sent to Irodori. Place the emoji exactly where its effect should occur. Example: あははっ🤭、本気で言ってるの？…😮‍💨まあ、君らしいけどね。
-15. DO NOT write audible acting as prose stage directions such as （ため息）, (laughs), [whispers], *sigh*, etc. Never output both a prose stage direction and an emoji for the same event. Prefer the direct emoji control instead.
-16. Avoid parenthesized/bracketed physical-action narration inside the spoken text. Non-audible physical actions should normally be handled by the existing RimTalk interaction/context fields or omitted from the spoken line, not inserted mid-sentence in parentheses. Whole-line emotion, pace, intensity, and voice style still belong in <delivery-caption>.
-";
-            }
-            catch (System.Exception ex)
-            {
-                Log.Warning($"[RimTalk.TTS/Irodori] Could not append direct acting-emoji prompt instruction: {ex.Message}");
-            }
-        }
-    }
-
-    /// <summary>
-    /// CaptureAndStrip caches the TTS payload before this postfix runs. We can therefore remove the
-    /// direct Irodori control emojis from RimTalk's visible/history TalkResponse without removing
-    /// them from the TTS-only payload. Recognized old-style stage directions are also hidden as a
-    /// backward-compatible fallback.
+    /// CaptureAndStrip caches the TTS payload before this postfix runs. Remove only Mod-recognized
+    /// Irodori machine controls from RimTalk's visible/history TalkResponse while leaving the cached
+    /// TTS payload untouched. Recognized legacy prose cues are hidden as a compatibility fallback.
+    ///
+    /// Important: this patch intentionally does NOT tell the LLM which emojis to generate.
+    /// The active RimTalk prompt/preset is the single source of generation policy.
     /// </summary>
     [HarmonyPatch(typeof(UnifiedTtsPayloadStore), nameof(UnifiedTtsPayloadStore.CaptureAndStrip))]
-    public static class IrodoriStageDirectionDisplayPatch
+    public static class IrodoriActingControlDisplayPatch
     {
         [HarmonyPostfix]
         public static void Postfix(TalkResponse response, TTSSettings settings, bool __result)
@@ -146,9 +111,8 @@ namespace RimTalk.TTS.Patch
 
     /// <summary>
     /// RimTalk records the raw API response before QueueIncomingResponse performs normal Fast Path
-    /// capture. Remove direct acting controls from ApiHistory as well so they remain TTS-only data.
-    /// This patch is intentionally independent of the existing RTTTS-envelope ApiHistory patch;
-    /// removing the envelope and removing acting controls are commutative operations.
+    /// capture. Remove recognized TTS-only controls from ApiHistory as well so machine annotations
+    /// do not become future dialogue/style examples.
     /// </summary>
     [HarmonyPatch(typeof(ApiHistory), nameof(ApiHistory.AddResponse))]
     public static class IrodoriActingControlApiHistoryPatch
@@ -174,7 +138,7 @@ namespace RimTalk.TTS.Patch
             }
             catch
             {
-                // ApiHistory cleanup must never interfere with RimTalk response handling.
+                // History cleanup must never interfere with RimTalk response handling.
             }
         }
     }
