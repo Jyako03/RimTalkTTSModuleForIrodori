@@ -66,7 +66,7 @@ namespace RimTalk.TTS.Service.IrodoriService
             new CueRule("😆", "大喜び", "歓喜", "喜びながら", "joyfully"),
             new CueRule("😊", "嬉しそう", "楽しげ", "楽しそう", "明るく笑", "cheerfully", "gladly", "happily"),
             new CueRule("😎", "得意げ", "自信ありげ", "誇らしげ", "confidently", "proudly"),
-            new CueRule("🙏", "懇願", "すがるよう", " pleading", "begging", "pleading"),
+            new CueRule("🙏", "懇願", "すがるよう", "begging", "pleading"),
             new CueRule("🥴", "酔っ払", "酔って", "酔いながら", "drunken"),
             new CueRule("😌", "安堵", "ほっと", "満足げ", "relieved", "contentedly"),
             new CueRule("🤔", "疑問の声", "首をかしげ", "考え込みながら", "questioning", "wondering"),
@@ -84,18 +84,20 @@ namespace RimTalk.TTS.Service.IrodoriService
             convertedCount = 0;
             if (string.IsNullOrWhiteSpace(text)) return text ?? string.Empty;
 
+            int count = 0;
             string result = StageDirectionRegex.Replace(text, match =>
             {
                 string stage = match.Groups["stage"].Value;
                 string emoji = MapStageDirection(stage);
                 if (!string.IsNullOrEmpty(emoji))
                 {
-                    convertedCount++;
+                    count++;
                     return emoji;
                 }
                 return stripUnmapped ? " " : match.Value;
             });
 
+            convertedCount = count;
             result = result.Normalize(NormalizationForm.FormKC);
             result = Regex.Replace(result, @"\s+", " ").Trim();
             return result;
