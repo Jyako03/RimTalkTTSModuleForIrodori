@@ -7,8 +7,8 @@ namespace RimTalk.TTS.Service.IrodoriService
 {
     /// <summary>
     /// Compatibility mapper for older prose stage directions plus shared helpers for Irodori
-    /// inline emoji acting controls. New Fast Path prompts ask the LLM to emit Irodori emojis
-    /// directly; prose -> emoji conversion remains only as a fallback for older/model-deviant output.
+    /// inline emoji acting controls. New Fast Path prompts ask the LLM to emit a conservative set
+    /// of localized Irodori emojis directly; prose -> emoji conversion remains only as a fallback.
     /// </summary>
     public static class IrodoriStageDirectionMapper
     {
@@ -24,9 +24,25 @@ namespace RimTalk.TTS.Service.IrodoriService
             }
         }
 
-        // Sound-producing / physiological cues come first so a legacy direction such as
-        // "驚いて息をのむ" can retain the actual gasp before a broader emotion cue.
-        // At most two distinct annotations are inserted for one legacy stage direction.
+        // Direct Fast Path output is intentionally conservative. These are useful as localized
+        // audible controls inside a line; whole-line mood/emotion stays in the RTTTS caption.
+        private static readonly string[] DirectControlEmojis =
+        {
+            "👂",   // whisper / close to ear
+            "😮‍💨", // breath / sigh
+            "⏸️",   // pause / silence
+            "🤭",   // chuckle / giggle
+            "🥵",   // panting / moan / groan
+            "😏",   // teasing / coaxing
+            "🥺",   // trembling / timid
+            "🌬️",  // shortness of breath / heavy breathing
+            "😮",   // gasp
+            "🤧",   // cough / sneeze / sniffle
+            "😭"    // crying / sobbing
+        };
+
+        // Legacy prose conversion rules. Kept broader than DirectControlEmojis so old/model-deviant
+        // stage directions can still be handled without being spoken literally.
         private static readonly CueRule[] Rules =
         {
             new CueRule("😮", "息をのむ", "息を呑む", "息を飲む", "息をのみ", "息を呑み", "gasp"),
@@ -41,8 +57,6 @@ namespace RimTalk.TTS.Service.IrodoriService
             new CueRule("🥵", "うめき声", "呻き声", "唸り声", "うめく", "呻く", "唸る", "moan", "groan"),
             new CueRule("🎵", "鼻歌", "ハミング", "humming", "hums"),
             new CueRule("⏸️", "一拍置", "一拍お", "間を置", "間をお", "少し間", "しばし沈黙", "沈黙", "pause", "silence"),
-
-            // Delivery/style cues.
             new CueRule("👂", "囁", "ささや", "小声で", "耳元で", "whisper"),
             new CueRule("⏩", "早口", "まくした", "捲し立", "急いで話", "rapid-fire", "rapidly", "speaks quickly", "speaking quickly"),
             new CueRule("🐢", "ゆっくり", "ゆるやかに話", "slowly", "speaks slowly", "speaking slowly"),
@@ -102,8 +116,8 @@ namespace RimTalk.TTS.Service.IrodoriService
         }
 
         /// <summary>
-        /// Remove Irodori control emojis from text intended for RimTalk display/history while
-        /// leaving the same emojis intact in the cached TTS payload.
+        /// Remove only the conservative direct-control set from RimTalk display/history. This avoids
+        /// treating ordinary character emojis as hidden machine controls.
         /// </summary>
         public static string StripControlEmojisForDisplay(string text, out int strippedCount)
         {
@@ -111,20 +125,15 @@ namespace RimTalk.TTS.Service.IrodoriService
             if (string.IsNullOrWhiteSpace(text)) return text ?? string.Empty;
 
             string result = text;
-            var seen = new HashSet<string>(StringComparer.Ordinal);
-
-            foreach (CueRule rule in Rules)
+            foreach (string emoji in DirectControlEmojis)
             {
-                if (string.IsNullOrEmpty(rule.Emoji) || !seen.Add(rule.Emoji))
-                    continue;
-
                 int searchFrom = 0;
                 while (searchFrom < result.Length)
                 {
-                    int index = result.IndexOf(rule.Emoji, searchFrom, StringComparison.Ordinal);
+                    int index = result.IndexOf(emoji, searchFrom, StringComparison.Ordinal);
                     if (index < 0) break;
 
-                    result = result.Remove(index, rule.Emoji.Length);
+                    result = result.Remove(index, emoji.Length);
                     strippedCount++;
                     searchFrom = index;
                 }
@@ -159,9 +168,6 @@ namespace RimTalk.TTS.Service.IrodoriService
             return result;
         }
 
-        /// <summary>
-        /// Display/history cleanup for the new direct-emoji path plus the old prose fallback.
-        /// </summary>
         public static string StripActingControlsForDisplay(string text, out int strippedCount)
         {
             string result = StripControlEmojisForDisplay(text, out int emojiCount);
@@ -175,9 +181,6 @@ namespace RimTalk.TTS.Service.IrodoriService
             if (string.IsNullOrWhiteSpace(stageDirection)) return string.Empty;
 
             string stage = stageDirection.Normalize(NormalizationForm.FormKC).Trim().ToLowerInvariant();
-
-            // Long parentheticals are much more likely to be actual prose/asides than a compact
-            // performance direction. Refuse to infer an acting cue from them.
             if (stage.Length > 64) return string.Empty;
 
             var emojis = new List<string>(2);
