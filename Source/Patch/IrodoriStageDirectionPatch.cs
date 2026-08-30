@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using HarmonyLib;
 using RimTalk.Data;
 using RimTalk.Prompt;
@@ -12,11 +13,8 @@ namespace RimTalk.TTS.Patch
 {
     /// <summary>
     /// Keep the Fast Path prompt responsible only for the RTTTS machine envelope and delivery
-    /// caption. Dialogue-body policy (including Irodori inline controls) belongs to the active
-    /// RimTalk preset and must not be duplicated by the Mod.
-    ///
-    /// This compatibility patch only replaces one legacy sentence in BuildPromptInstruction that
-    /// used to explicitly permit prose stage directions in the dialogue body.
+    /// caption. Dialogue-body policy (including Irodori inline controls and RP action narration)
+    /// belongs to the active RimTalk preset and must not be duplicated by the Mod.
     /// </summary>
     [HarmonyPatch(typeof(UnifiedTtsPayloadStore), nameof(UnifiedTtsPayloadStore.BuildPromptInstruction))]
     public static class IrodoriFastPathPromptIsolationPatch
@@ -66,7 +64,6 @@ namespace RimTalk.TTS.Patch
                 int index = __result.Count - 1;
                 var current = __result[index];
 
-                // Avoid accidental duplication if BuildMessages is post-processed more than once.
                 if (current.content != null && current.content.Contains("[RIMTALK TTS FAST PATH — FINAL MACHINE REMINDER]"))
                     return;
 
@@ -83,66 +80,55 @@ namespace RimTalk.TTS.Patch
     }
 
     /// <summary>
-    /// Backward-compatibility path only.
+    /// Display/history cleanup for the direct-Irodori Fast Path.
     ///
-    /// Irodori-aware RimTalk presets are expected to emit supported inline control emojis directly.
-    /// If an older preset or a model deviation still emits a recognizable prose stage direction,
-    /// convert it locally for TTS without making the Mod another source of generation rules.
+    /// The active RimTalk preset now owns RP action narration such as （耳元へ顔を寄せる）.
+    /// Therefore the Mod MUST NOT interpret parenthesized/bracketed prose semantically here.
+    /// Only the known Irodori machine-control emojis are hidden from display/history.
+    ///
+    /// A small leading-empty-bracket fail-safe removes artifacts such as [] that can be left by
+    /// older cleanup ordering. Non-empty brackets and all Japanese action narration are preserved.
     /// </summary>
-    [HarmonyPatch(typeof(UnifiedTtsPayloadStore), nameof(UnifiedTtsPayloadStore.SanitizeForTts))]
-    public static class IrodoriLegacyStageDirectionSanitizePatch
+    internal static class IrodoriFastPathDisplaySanitizer
     {
-        [HarmonyPostfix]
-        public static void Postfix(string text, TTSSettings settings, ref string __result)
+        private static readonly Regex LeadingEmptyBracketArtifactRegex = new Regex(
+            @"^\s*(?:(?:\[\s*\]|［\s*］|【\s*】|〔\s*〕)\s*)+",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        public static string Clean(string text, bool stripEnvelopeFirst, out int hiddenCount)
         {
-            try
+            hiddenCount = 0;
+            if (string.IsNullOrWhiteSpace(text))
+                return text ?? string.Empty;
+
+            string result = text;
+
+            // ApiHistory sees the raw LLM text before QueueIncomingResponse captures the payload.
+            // Strip RTTTS first so its inner [RTTTS:caption] can never be mistaken for bracket prose.
+            if (stripEnvelopeFirst && UnifiedTtsPayloadStore.TryStripEnvelopeForDisplay(result, out string clean))
+                result = clean;
+
+            result = IrodoriStageDirectionMapper.StripControlEmojisForDisplay(
+                result,
+                out int emojiCount);
+            hiddenCount += emojiCount;
+
+            string withoutArtifact = LeadingEmptyBracketArtifactRegex.Replace(result, string.Empty);
+            if (!string.Equals(withoutArtifact, result, System.StringComparison.Ordinal))
             {
-                var cfg = settings?.Irodori;
-                if (settings == null ||
-                    settings.Supplier != TTSSettings.TTSSupplier.Irodori ||
-                    cfg == null ||
-                    !cfg.UnifiedTtsEnabled ||
-                    !cfg.UnifiedTtsStripStageDirections ||
-                    string.IsNullOrWhiteSpace(text))
-                {
-                    return;
-                }
-
-                // Direct Irodori control emojis survive SanitizeForTts unchanged.
-                // Rebuild the TTS string only when a legacy prose cue was actually recognized.
-                string source = text;
-                if (UnifiedTtsPayloadStore.TryStripEnvelopeForDisplay(source, out string clean))
-                    source = clean;
-
-                string transformed = IrodoriStageDirectionMapper.Transform(
-                    source,
-                    stripUnmapped: true,
-                    out int convertedCount);
-
-                if (convertedCount <= 0)
-                    return;
-
-                __result = transformed;
-
-                if (cfg.UnifiedTtsDebugLogging)
-                {
-                    Log.Message($"[RimTalk.TTS/Irodori] Legacy Stage Direction converted to acting emoji: {convertedCount}; TTS='{transformed}'");
-                }
+                hiddenCount++;
+                result = withoutArtifact;
             }
-            catch (System.Exception ex)
-            {
-                Log.Warning($"[RimTalk.TTS/Irodori] Legacy Stage Direction conversion failed; using normal sanitized text. {ex.Message}");
-            }
+
+            result = Regex.Replace(result, @"[ \t]{2,}", " ").Trim();
+            return result;
         }
     }
 
     /// <summary>
-    /// CaptureAndStrip caches the TTS payload before this postfix runs. Remove only Mod-recognized
-    /// Irodori machine controls from RimTalk's visible/history TalkResponse while leaving the cached
-    /// TTS payload untouched. Recognized legacy prose cues are hidden as a compatibility fallback.
-    ///
-    /// Important: this patch intentionally does NOT tell the LLM which emojis to generate.
-    /// The active RimTalk prompt/preset is the single source of generation policy.
+    /// CaptureAndStrip caches the TTS payload before this postfix runs. At this point the RTTTS
+    /// envelope has already been removed from TalkResponse.Text. Hide only direct Irodori machine
+    /// controls from RimTalk display/history and preserve RP action narration verbatim.
     /// </summary>
     [HarmonyPatch(typeof(UnifiedTtsPayloadStore), nameof(UnifiedTtsPayloadStore.CaptureAndStrip))]
     public static class IrodoriActingControlDisplayPatch
@@ -165,17 +151,17 @@ namespace RimTalk.TTS.Patch
                     return;
                 }
 
-                string cleanDisplay = IrodoriStageDirectionMapper.StripActingControlsForDisplay(
-                    response.Text,
-                    out int strippedCount);
+                string original = response.Text;
+                string cleanDisplay = IrodoriFastPathDisplaySanitizer.Clean(
+                    original,
+                    stripEnvelopeFirst: false,
+                    out int hiddenCount);
 
-                if (strippedCount <= 0)
-                    return;
+                if (!string.Equals(cleanDisplay, original, System.StringComparison.Ordinal))
+                    response.Text = cleanDisplay;
 
-                response.Text = cleanDisplay;
-
-                if (cfg.UnifiedTtsDebugLogging)
-                    Log.Message($"[RimTalk.TTS/Irodori] Hidden {strippedCount} Irodori acting control(s) from RimTalk display/history.");
+                if (hiddenCount > 0 && cfg.UnifiedTtsDebugLogging)
+                    Log.Message($"[RimTalk.TTS/Irodori] Hidden {hiddenCount} TTS-only display control(s); RP action narration preserved.");
             }
             catch (System.Exception ex)
             {
@@ -186,13 +172,14 @@ namespace RimTalk.TTS.Patch
 
     /// <summary>
     /// RimTalk records the raw API response before QueueIncomingResponse performs normal Fast Path
-    /// capture. Remove recognized TTS-only controls from ApiHistory as well so machine annotations
-    /// do not become future dialogue/style examples.
+    /// capture. Always strip RTTTS first, then hide only direct Irodori control emojis. This avoids
+    /// interpreting the RTTTS caption or RP action narration as legacy Stage Directions.
     /// </summary>
     [HarmonyPatch(typeof(ApiHistory), nameof(ApiHistory.AddResponse))]
     public static class IrodoriActingControlApiHistoryPatch
     {
         [HarmonyPrefix]
+        [HarmonyPriority(Priority.Last)]
         public static void Prefix(ref string response)
         {
             try
@@ -207,8 +194,9 @@ namespace RimTalk.TTS.Patch
                     return;
                 }
 
-                response = IrodoriStageDirectionMapper.StripActingControlsForDisplay(
+                response = IrodoriFastPathDisplaySanitizer.Clean(
                     response,
+                    stripEnvelopeFirst: true,
                     out _);
             }
             catch
