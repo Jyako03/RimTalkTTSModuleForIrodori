@@ -31,9 +31,11 @@ namespace RimTalk.TTS.Data
         public int ChunkMinChars = 80;
         public int FirstSentenceChunkMinChars = 0; // 0 = omit
 
-        // Emotion/style bridge from RimTalk preprocessing to Irodori v4.
+        // Emotion/style bridge. Caption remains useful with Unified Fast Path, but automatic
+        // emotion->emoji mapping is legacy behavior and defaults OFF because Irodori-aware RimTalk
+        // presets now emit localized inline control emojis directly.
         public bool EmotionToCaption = true;
-        public bool EmotionToEmoji = true;
+        public bool EmotionToEmoji = false;
         public string CaptionPrefix = "";
         public string GlobalLoraAdapter = "";
 
@@ -41,7 +43,10 @@ namespace RimTalk.TTS.Data
         // in a compact machine envelope, then bypass the TTS preprocessing LLM call.
         // Successful path becomes: RimTalk LLM -> Irodori TTS (2 network/API requests instead of 3).
         public bool UnifiedTtsEnabled = false;
-        public bool UnifiedTtsFallbackToLegacy = true;
+
+        // Legacy preprocessing is now a compatibility option rather than the recommended Fast Path
+        // behavior. When disabled, a missing marker is handled locally without an extra LLM request.
+        public bool UnifiedTtsFallbackToLegacy = false;
         public bool UnifiedTtsStripStageDirections = true;
         public bool UnifiedTtsDebugLogging = false;
         public string UnifiedTtsExtraInstruction = "";
@@ -71,11 +76,11 @@ namespace RimTalk.TTS.Data
             Scribe_Values.Look(ref ChunkMinChars, "chunkMinChars", 80);
             Scribe_Values.Look(ref FirstSentenceChunkMinChars, "firstSentenceChunkMinChars", 0);
             Scribe_Values.Look(ref EmotionToCaption, "emotionToCaption", true);
-            Scribe_Values.Look(ref EmotionToEmoji, "emotionToEmoji", true);
+            Scribe_Values.Look(ref EmotionToEmoji, "emotionToEmoji", false);
             Scribe_Values.Look(ref CaptionPrefix, "captionPrefix", "");
             Scribe_Values.Look(ref GlobalLoraAdapter, "globalLoraAdapter", "");
             Scribe_Values.Look(ref UnifiedTtsEnabled, "unifiedTtsEnabled", false);
-            Scribe_Values.Look(ref UnifiedTtsFallbackToLegacy, "unifiedTtsFallbackToLegacy", true);
+            Scribe_Values.Look(ref UnifiedTtsFallbackToLegacy, "unifiedTtsFallbackToLegacy", false);
             Scribe_Values.Look(ref UnifiedTtsStripStageDirections, "unifiedTtsStripStageDirections", true);
             Scribe_Values.Look(ref UnifiedTtsDebugLogging, "unifiedTtsDebugLogging", false);
             Scribe_Values.Look(ref UnifiedTtsExtraInstruction, "unifiedTtsExtraInstruction", "");
