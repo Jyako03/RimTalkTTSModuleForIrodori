@@ -49,7 +49,7 @@ namespace RimTalk.TTS.Patch
     {
         private const string Reminder =
             "\n\n[RIMTALK TTS FAST PATH — FINAL MACHINE REMINDER]\n" +
-            "For EVERY JSON text value, the first characters must be exactly [[RTTTS:. " +
+            "For EVERY JSON text value, begin with the literal ASCII prefix [[RTTTS: and then write the delivery caption. " +
             "Use the form [[RTTTS:<delivery-caption>]]<dialogue> exactly once. " +
             "The active RimTalk preset alone governs the dialogue body and Irodori inline controls; " +
             "this reminder only requires the machine envelope and delivery-caption metadata.";
