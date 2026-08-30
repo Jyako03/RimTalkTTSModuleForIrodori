@@ -1,5 +1,8 @@
+using System.Collections.Generic;
 using HarmonyLib;
 using RimTalk.Data;
+using RimTalk.Prompt;
+using RimTalk.Service;
 using RimTalk.TTS.Data;
 using RimTalk.TTS.Service;
 using RimTalk.TTS.Service.IrodoriService;
@@ -31,6 +34,51 @@ namespace RimTalk.TTS.Patch
                 return;
 
             __result = __result.Replace(LegacyBodyPolicy, IsolatedBodyPolicy);
+        }
+    }
+
+    /// <summary>
+    /// Gemma/RP prompts often place strong output rules in the final User message. The full Fast Path
+    /// machine-envelope contract is still injected into the initial prompt block by RimTalkPatches,
+    /// but a tiny final reminder materially reduces occasional marker omission without duplicating
+    /// any Irodori emoji or dialogue-body generation policy.
+    /// </summary>
+    [HarmonyPatch(typeof(PromptManager), nameof(PromptManager.BuildMessages))]
+    [HarmonyPriority(Priority.Last)]
+    public static class IrodoriFastPathFinalEnvelopeReminderPatch
+    {
+        private const string Reminder =
+            "\n\n[RIMTALK TTS FAST PATH — FINAL MACHINE REMINDER]\n" +
+            "For EVERY JSON text value, the first characters must be exactly [[RTTTS:. " +
+            "Use the form [[RTTTS:<delivery-caption>]]<dialogue> exactly once. " +
+            "The active RimTalk preset alone governs the dialogue body and Irodori inline controls; " +
+            "this reminder only requires the machine envelope and delivery-caption metadata.";
+
+        [HarmonyPostfix]
+        public static void Postfix(ref List<(Role role, string content)> __result)
+        {
+            try
+            {
+                var settings = TTSConfig.Settings;
+                if (!UnifiedTtsPayloadStore.IsEnabled(settings) || __result == null || __result.Count == 0)
+                    return;
+
+                int index = __result.Count - 1;
+                var current = __result[index];
+
+                // Avoid accidental duplication if BuildMessages is post-processed more than once.
+                if (current.content != null && current.content.Contains("[RIMTALK TTS FAST PATH — FINAL MACHINE REMINDER]"))
+                    return;
+
+                __result[index] = (current.role, (current.content ?? string.Empty) + Reminder);
+
+                if (settings.Irodori?.UnifiedTtsDebugLogging == true)
+                    Log.Message("[RimTalk.TTS] Fast Path final envelope reminder injected.");
+            }
+            catch (System.Exception ex)
+            {
+                Log.Warning($"[RimTalk.TTS] Fast Path final envelope reminder failed: {ex.Message}");
+            }
         }
     }
 
