@@ -25,24 +25,36 @@ namespace RimTalk.TTS.Service
             {
                 // Get TTS processing prompt from settings or use default
                 string promptTemplate = TTSConstant.GetTTSProcessingPrompt(settings);
-                
+
+                if (string.IsNullOrWhiteSpace(promptTemplate))
+                {
+                    Log.Warning("[RimTalk.TTS] preprocess prompt is empty");
+                    return null;
+                }
+
                 // Build translation prompt
                 string prompt = promptTemplate
-                    .Replace("{language}", targetLanguage);
+                    .Replace("{language}", targetLanguage ?? string.Empty);
 
-                // Call SimpleLLMClient directly with settings
+                // Call SimpleLLMClient directly with settings. QueryAsync deliberately returns
+                // (null, false) for configuration, HTTP, or response-parsing failures, so never
+                // dereference the response before checking both values.
                 var (response, success) = await InputPreProcessClient.QueryAsync(prompt, text, settings);
+                if (!success || response == null)
+                {
+                    Log.Warning("[RimTalk.TTS] Preprocess API failed or returned no structured response");
+                    return null;
+                }
+
                 response.Text = CleanText(response.Text);
 
-                if (success && !string.IsNullOrEmpty(response.Text))
+                if (!string.IsNullOrEmpty(response.Text))
                 {
                     return response;
                 }
-                else
-                {
-                    Log.Warning("[RimTalk.TTS] Empty response from preprocess API");
-                    return null;
-                }
+
+                Log.Warning("[RimTalk.TTS] Empty response from preprocess API");
+                return null;
             }
             catch (System.Exception ex)
             {
@@ -50,6 +62,7 @@ namespace RimTalk.TTS.Service
                 return null;
             }
         }
+
         private static string CleanText(string text)
         {
             if (string.IsNullOrEmpty(text)) return text;
