@@ -172,10 +172,22 @@ namespace RimTalk.TTS.Patch
 
     /// <summary>
     /// RimTalk records the raw API response before QueueIncomingResponse performs normal Fast Path
-    /// capture. Always strip RTTTS first, then hide only direct Irodori control emojis. This avoids
-    /// interpreting the RTTTS caption or RP action narration as legacy Stage Directions.
+    /// capture. RimTalk 1.2 added an AddResponse overload with targetName; patch the seven-argument
+    /// implementation explicitly so both the legacy wrapper and the target-aware path flow through
+    /// one unambiguous Harmony target. Always strip RTTTS first, then hide only direct Irodori
+    /// control emojis. This avoids interpreting the RTTTS caption or RP action narration as legacy
+    /// Stage Directions.
     /// </summary>
-    [HarmonyPatch(typeof(ApiHistory), nameof(ApiHistory.AddResponse))]
+    [HarmonyPatch(typeof(ApiHistory), nameof(ApiHistory.AddResponse), new System.Type[]
+    {
+        typeof(System.Guid),
+        typeof(string),
+        typeof(string),
+        typeof(string),
+        typeof(global::RimTalk.Source.Data.Payload),
+        typeof(int),
+        typeof(string)
+    })]
     public static class IrodoriActingControlApiHistoryPatch
     {
         [HarmonyPrefix]
