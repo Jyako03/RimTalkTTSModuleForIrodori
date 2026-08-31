@@ -184,7 +184,7 @@ namespace RimTalk.TTS.Patch
         typeof(string),
         typeof(string),
         typeof(string),
-        typeof(global::RimTalk.Source.Data.Payload),
+        typeof(global::RimTalk.Client.Payload),
         typeof(int),
         typeof(string)
     })]
