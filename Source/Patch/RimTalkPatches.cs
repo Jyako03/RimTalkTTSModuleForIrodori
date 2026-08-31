@@ -62,11 +62,20 @@ namespace RimTalk.TTS.Patch
         }
 
         /// <summary>
-        /// Keep RimTalk's normal API response log free of the hidden fast-path prefix. This only
-        /// changes the string passed to ApiHistory; the original TalkResponse still carries the
-        /// marker until QueueIncomingResponse captures its emotion metadata.
+        /// Keep RimTalk's normal API response log free of the hidden fast-path prefix. RimTalk 1.2
+        /// added a target-aware AddResponse overload, so patch the seven-argument implementation
+        /// explicitly. The six-argument overload delegates to this implementation as well.
         /// </summary>
-        [HarmonyPatch(typeof(ApiHistory), nameof(ApiHistory.AddResponse))]
+        [HarmonyPatch(typeof(ApiHistory), nameof(ApiHistory.AddResponse), new Type[]
+        {
+            typeof(Guid),
+            typeof(string),
+            typeof(string),
+            typeof(string),
+            typeof(global::RimTalk.Source.Data.Payload),
+            typeof(int),
+            typeof(string)
+        })]
         public static class UnifiedTtsApiHistory_Patch
         {
             static void Prefix(ref string response)
