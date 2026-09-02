@@ -43,7 +43,10 @@ namespace RimTalk.TTS.Patch
                 bool validAnchor = !string.IsNullOrWhiteSpace(anchorId) &&
                                    anchorId != VoiceModel.NONE_MODEL_ID &&
                                    anchorId != VoiceModel.DEFAULT_MODEL_ID &&
-                                   anchorId != VoiceModel.RULE_BASED_MODEL_ID;
+                                   anchorId != VoiceModel.RULE_BASED_MODEL_ID &&
+                                   !string.Equals(anchorId, "none", StringComparison.OrdinalIgnoreCase) &&
+                                   !string.Equals(anchorId, "no_ref", StringComparison.OrdinalIgnoreCase) &&
+                                   !string.Equals(anchorId, "no-ref", StringComparison.OrdinalIgnoreCase);
 
                 IrodoriVoiceConfig anchorCfg = validAnchor ? settings.Irodori.GetVoiceConfig(anchorId) : null;
                 bool alreadyPack = anchorCfg != null &&
