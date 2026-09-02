@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <RimTalk.TTS.ReferencePack.Open>Reference Pack</RimTalk.TTS.ReferencePack.Open>
+  <RimTalk.TTS.ReferencePack.AlreadyActive>Reference Pack active</RimTalk.TTS.ReferencePack.AlreadyActive>
+  <RimTalk.TTS.ReferencePack.AlreadyActiveTip>The current voice is already a Reference Pack.</RimTalk.TTS.ReferencePack.AlreadyActiveTip>
+  <RimTalk.TTS.ReferencePack.NeedAnchorTip>Adopt one Irodori voice in Voice Lab first. It will be used as the anchor for a same-speaker Reference Pack.</RimTalk.TTS.ReferencePack.NeedAnchorTip>
+  <RimTalk.TTS.ReferencePack.Title>{0} - Reference Pack</RimTalk.TTS.ReferencePack.Title>
+  <RimTalk.TTS.ReferencePack.Description>Use the adopted voice as an anchor and generate multiple short clips of the same speaker. Save {0}-{1} references; about 3-6 is recommended.</RimTalk.TTS.ReferencePack.Description>
+  <RimTalk.TTS.ReferencePack.Anchor>Anchor Voice</RimTalk.TTS.ReferencePack.Anchor>
+  <RimTalk.TTS.ReferencePack.ProfileName>Pack name</RimTalk.TTS.ReferencePack.ProfileName>
+  <RimTalk.TTS.ReferencePack.SampleText>Sample text for the next reference</RimTalk.TTS.ReferencePack.SampleText>
+  <RimTalk.TTS.ReferencePack.DeliveryHint>Delivery hint for this reference only (optional)</RimTalk.TTS.ReferencePack.DeliveryHint>
+  <RimTalk.TTS.ReferencePack.Count>References: {0}/{1}</RimTalk.TTS.ReferencePack.Count>
+  <RimTalk.TTS.ReferencePack.GenerateAdd>Generate &amp; add to pack</RimTalk.TTS.ReferencePack.GenerateAdd>
+  <RimTalk.TTS.ReferencePack.Generating>Generating / registering...</RimTalk.TTS.ReferencePack.Generating>
+  <RimTalk.TTS.ReferencePack.References>Reference Pack contents</RimTalk.TTS.ReferencePack.References>
+  <RimTalk.TTS.ReferencePack.NoReferences>No references yet. Generate several clips while varying the sample text.</RimTalk.TTS.ReferencePack.NoReferences>
+  <RimTalk.TTS.ReferencePack.Remove>Remove</RimTalk.TTS.ReferencePack.Remove>
+  <RimTalk.TTS.ReferencePack.SaveAssign>Save &amp; assign pack</RimTalk.TTS.ReferencePack.SaveAssign>
+  <RimTalk.TTS.ReferencePack.NoAnchor>No anchor voice is selected.</RimTalk.TTS.ReferencePack.NoAnchor>
+  <RimTalk.TTS.ReferencePack.Added>Added reference #{0}.</RimTalk.TTS.ReferencePack.Added>
+  <RimTalk.TTS.ReferencePack.Removed>Reference removed.</RimTalk.TTS.ReferencePack.Removed>
+  <RimTalk.TTS.ReferencePack.Saved>Created Reference Pack "{0}" with {1} references and assigned it to the pawn.</RimTalk.TTS.ReferencePack.Saved>
+</LanguageData>
