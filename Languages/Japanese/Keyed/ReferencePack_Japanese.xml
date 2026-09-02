@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <RimTalk.TTS.ReferencePack.Open>Reference Pack</RimTalk.TTS.ReferencePack.Open>
+  <RimTalk.TTS.ReferencePack.AlreadyActive>Reference Pack 使用中</RimTalk.TTS.ReferencePack.AlreadyActive>
+  <RimTalk.TTS.ReferencePack.AlreadyActiveTip>現在の音声はすでにReference Packです。</RimTalk.TTS.ReferencePack.AlreadyActiveTip>
+  <RimTalk.TTS.ReferencePack.NeedAnchorTip>先にVoice Labで1つのIrodori音声を採用してください。その音声をAnchorとして同じ声のReference Packを作成します。</RimTalk.TTS.ReferencePack.NeedAnchorTip>
+  <RimTalk.TTS.ReferencePack.Title>{0} - Reference Pack</RimTalk.TTS.ReferencePack.Title>
+  <RimTalk.TTS.ReferencePack.Description>採用済みの1音声をAnchorにして、同じ話者の短い参照クリップを複数生成します。{0}～{1}本を保存できます。3～6本程度を推奨します。</RimTalk.TTS.ReferencePack.Description>
+  <RimTalk.TTS.ReferencePack.Anchor>Anchor Voice</RimTalk.TTS.ReferencePack.Anchor>
+  <RimTalk.TTS.ReferencePack.ProfileName>Pack名</RimTalk.TTS.ReferencePack.ProfileName>
+  <RimTalk.TTS.ReferencePack.SampleText>次に追加するReferenceのサンプル台詞</RimTalk.TTS.ReferencePack.SampleText>
+  <RimTalk.TTS.ReferencePack.DeliveryHint>このReferenceだけの演技ヒント（任意）</RimTalk.TTS.ReferencePack.DeliveryHint>
+  <RimTalk.TTS.ReferencePack.Count>Reference: {0}/{1}</RimTalk.TTS.ReferencePack.Count>
+  <RimTalk.TTS.ReferencePack.GenerateAdd>生成してPackへ追加</RimTalk.TTS.ReferencePack.GenerateAdd>
+  <RimTalk.TTS.ReferencePack.Generating>生成・登録中...</RimTalk.TTS.ReferencePack.Generating>
+  <RimTalk.TTS.ReferencePack.References>Reference Pack 内容</RimTalk.TTS.ReferencePack.References>
+  <RimTalk.TTS.ReferencePack.NoReferences>まだReferenceがありません。台詞を変えながら複数本生成してください。</RimTalk.TTS.ReferencePack.NoReferences>
+  <RimTalk.TTS.ReferencePack.Remove>削除</RimTalk.TTS.ReferencePack.Remove>
+  <RimTalk.TTS.ReferencePack.SaveAssign>Packを保存して割当</RimTalk.TTS.ReferencePack.SaveAssign>
+  <RimTalk.TTS.ReferencePack.NoAnchor>Anchor Voiceが選択されていません。</RimTalk.TTS.ReferencePack.NoAnchor>
+  <RimTalk.TTS.ReferencePack.Added>Reference #{0} を追加しました。</RimTalk.TTS.ReferencePack.Added>
+  <RimTalk.TTS.ReferencePack.Removed>Referenceを削除しました。</RimTalk.TTS.ReferencePack.Removed>
+  <RimTalk.TTS.ReferencePack.Saved>Reference Pack「{0}」を{1}本のReferenceで作成し、Pawnへ割り当てました。</RimTalk.TTS.ReferencePack.Saved>
+</LanguageData>
