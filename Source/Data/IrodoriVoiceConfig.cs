@@ -25,6 +25,13 @@ namespace RimTalk.TTS.Data
         public string Caption = "";
         public string LoraAdapter = "";
 
+        // Reference Pack metadata. A pack itself is a local RimTalk VoiceModel using DirectReferences;
+        // the Irodori server still stores each generated backing clip as an ordinary registry voice.
+        // ReferenceVoiceIds contains only pack-owned backing files and is used for cleanup/deletion.
+        // ReferencePackSourceVoiceId records the original registry voice used as the cloning anchor.
+        public List<string> ReferenceVoiceIds = new List<string>();
+        public string ReferencePackSourceVoiceId = "";
+
         public void ExposeData()
         {
             Scribe_Values.Look(ref Mode, "mode", ReferenceMode.RegistryVoice);
@@ -35,9 +42,12 @@ namespace RimTalk.TTS.Data
             Scribe_Values.Look(ref RefEmbed, "refEmbed", "");
             Scribe_Values.Look(ref Caption, "caption", "");
             Scribe_Values.Look(ref LoraAdapter, "loraAdapter", "");
+            Scribe_Collections.Look(ref ReferenceVoiceIds, "referenceVoiceIds", LookMode.Value);
+            Scribe_Values.Look(ref ReferencePackSourceVoiceId, "referencePackSourceVoiceId", "");
 
             if (RefWavs == null) RefWavs = new List<string>();
             if (RefLatents == null) RefLatents = new List<string>();
+            if (ReferenceVoiceIds == null) ReferenceVoiceIds = new List<string>();
         }
     }
 }
