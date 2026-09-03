@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Reflection;
 using System.Threading;
 using HarmonyLib;
@@ -101,7 +100,7 @@ namespace RimTalk.TTS.Patch
             if (__instance == null || __args == null || __args.Length < 3)
                 return true;
 
-            var settings = GetSettings(__instance);
+            var settings = IrodoriVoiceLabJsonBuilder.GetSettings(__instance);
             if (settings == null) return true;
 
             var request = __args[0] as TTSRequest;
@@ -109,7 +108,7 @@ namespace RimTalk.TTS.Patch
             int seed = __args[2] is int value ? value : -1;
             if (request == null) return true;
 
-            __result = BuildVoiceDesignJson(settings, request, caption, seed);
+            __result = IrodoriVoiceLabJsonBuilder.BuildVoiceDesignJson(settings, request, caption, seed);
             return false;
         }
     }
@@ -159,7 +158,7 @@ namespace RimTalk.TTS.Patch
             if (!IrodoriVoiceLabGenerationContext.Active || __instance == null || __args == null || __args.Length < 6)
                 return true;
 
-            var settings = GetSettings(__instance);
+            var settings = IrodoriVoiceLabJsonBuilder.GetSettings(__instance);
             var request = __args[0] as TTSRequest;
             string input = __args[1] as string ?? string.Empty;
             string caption = __args[2] as string ?? string.Empty;
@@ -175,7 +174,8 @@ namespace RimTalk.TTS.Patch
             if (voiceConfig != null && voiceConfig.Mode != IrodoriVoiceConfig.ReferenceMode.RegistryVoice)
                 return true;
 
-            __result = BuildReferencePackJson(settings, request, input, caption, voiceConfig, format, useSse);
+            __result = IrodoriVoiceLabJsonBuilder.BuildReferencePackJson(
+                settings, request, input, caption, voiceConfig, format, useSse);
             return false;
         }
     }
@@ -201,7 +201,7 @@ namespace RimTalk.TTS.Patch
                 Pair("speed", lab.Speed)
             };
 
-            var opts = BuildLabOptions(lab, caption, includeMaxRefSeconds: false);
+            var opts = BuildLabOptions(lab, caption, false);
             opts.Insert(0, Pair("no_ref", true));
             if (seed >= 0) opts.Add(Pair("seed", seed));
             opts.Add(Pair("chunking_enabled", false));
@@ -231,7 +231,7 @@ namespace RimTalk.TTS.Patch
             };
             if (useSse) root.Add(Pair("stream_format", "sse"));
 
-            var opts = BuildLabOptions(lab, caption, includeMaxRefSeconds: true);
+            var opts = BuildLabOptions(lab, caption, true);
             opts.Add(Pair("chunking_enabled", false));
             string lora = !string.IsNullOrWhiteSpace(voiceConfig?.LoraAdapter)
                 ? voiceConfig.LoraAdapter
@@ -287,12 +287,4 @@ namespace RimTalk.TTS.Patch
                 .Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t") + "\"";
         }
     }
-
-    // Short aliases keep Harmony patch code readable without exposing the builder publicly.
-    internal static IrodoriSettings GetSettings(IrodoriClient client) => IrodoriVoiceLabJsonBuilder.GetSettings(client);
-    internal static string BuildVoiceDesignJson(IrodoriSettings settings, TTSRequest request, string caption, int seed) =>
-        IrodoriVoiceLabJsonBuilder.BuildVoiceDesignJson(settings, request, caption, seed);
-    internal static string BuildReferencePackJson(IrodoriSettings settings, TTSRequest request, string input, string caption,
-        IrodoriVoiceConfig voiceConfig, string format, bool useSse) =>
-        IrodoriVoiceLabJsonBuilder.BuildReferencePackJson(settings, request, input, caption, voiceConfig, format, useSse);
 }
