@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <RimTalk.TTS.VoiceLab.Settings.Button>Lab設定 ({0} steps)</RimTalk.TTS.VoiceLab.Settings.Button>
+  <RimTalk.TTS.VoiceLab.Settings.Title>Voice Lab 生成設定</RimTalk.TTS.VoiceLab.Settings.Title>
+  <RimTalk.TTS.VoiceLab.Settings.Description>Voice Lab と Reference Pack の生成にだけ使う設定です。通常のゲーム中TTS設定には影響しません。</RimTalk.TTS.VoiceLab.Settings.Description>
+  <RimTalk.TTS.VoiceLab.Settings.Steps>Steps</RimTalk.TTS.VoiceLab.Settings.Steps>
+  <RimTalk.TTS.VoiceLab.Settings.Speed>Speed</RimTalk.TTS.VoiceLab.Settings.Speed>
+  <RimTalk.TTS.VoiceLab.Settings.Duration>Duration scale</RimTalk.TTS.VoiceLab.Settings.Duration>
+  <RimTalk.TTS.VoiceLab.Settings.Sway>Sway coeff</RimTalk.TTS.VoiceLab.Settings.Sway>
+  <RimTalk.TTS.VoiceLab.Settings.CfgText>CFG Text</RimTalk.TTS.VoiceLab.Settings.CfgText>
+  <RimTalk.TTS.VoiceLab.Settings.CfgSpeaker>CFG Speaker</RimTalk.TTS.VoiceLab.Settings.CfgSpeaker>
+  <RimTalk.TTS.VoiceLab.Settings.CfgCaption>CFG Caption</RimTalk.TTS.VoiceLab.Settings.CfgCaption>
+  <RimTalk.TTS.VoiceLab.Settings.MaxRefSeconds>Max ref seconds</RimTalk.TTS.VoiceLab.Settings.MaxRefSeconds>
+  <RimTalk.TTS.VoiceLab.Settings.Schedule>T schedule mode</RimTalk.TTS.VoiceLab.Settings.Schedule>
+  <RimTalk.TTS.VoiceLab.Settings.Guidance>CFG guidance</RimTalk.TTS.VoiceLab.Settings.Guidance>
+  <RimTalk.TTS.VoiceLab.Settings.Hint>既定値は探索向けの24 Stepsです。Voice Labではchunkingを常にOFFにし、通常TTSのAdvanced Options JSONも混ぜません。CFG Caption=0 はIrodoriサーバー／checkpoint既定値を使います。</RimTalk.TTS.VoiceLab.Settings.Hint>
+  <RimTalk.TTS.VoiceLab.Settings.Reset>既定値に戻す</RimTalk.TTS.VoiceLab.Settings.Reset>
+  <RimTalk.TTS.VoiceLab.Settings.Save>保存して閉じる</RimTalk.TTS.VoiceLab.Settings.Save>
+  <RimTalk.TTS.VoiceLab.Settings.Saved>Voice Lab設定を保存しました。</RimTalk.TTS.VoiceLab.Settings.Saved>
+</LanguageData>
