@@ -31,6 +31,10 @@ namespace RimTalk.TTS.Data
         public int ChunkMinChars = 80;
         public int FirstSentenceChunkMinChars = 0; // 0 = omit
 
+        // Voice Lab uses an independent generation profile. Changing these values does not alter
+        // normal gameplay synthesis settings above. Missing legacy saves receive the Voice Lab defaults.
+        public IrodoriVoiceLabSettings VoiceLab = new IrodoriVoiceLabSettings();
+
         // Emotion/style bridge. Caption remains useful with Unified Fast Path, but automatic
         // emotion->emoji mapping is legacy behavior and defaults OFF because Irodori-aware RimTalk
         // presets now emit localized inline control emojis directly.
@@ -75,6 +79,7 @@ namespace RimTalk.TTS.Data
             Scribe_Values.Look(ref ChunkingEnabled, "chunkingEnabled", true);
             Scribe_Values.Look(ref ChunkMinChars, "chunkMinChars", 80);
             Scribe_Values.Look(ref FirstSentenceChunkMinChars, "firstSentenceChunkMinChars", 0);
+            Scribe_Deep.Look(ref VoiceLab, "voiceLabSettings");
             Scribe_Values.Look(ref EmotionToCaption, "emotionToCaption", true);
             Scribe_Values.Look(ref EmotionToEmoji, "emotionToEmoji", false);
             Scribe_Values.Look(ref CaptionPrefix, "captionPrefix", "");
@@ -86,6 +91,10 @@ namespace RimTalk.TTS.Data
             Scribe_Values.Look(ref UnifiedTtsExtraInstruction, "unifiedTtsExtraInstruction", "");
             Scribe_Values.Look(ref AdvancedOptionsJson, "advancedOptionsJson", "{}");
             Scribe_Collections.Look(ref VoiceConfigs, "voiceConfigs", LookMode.Value, LookMode.Deep);
+
+            if (VoiceLab == null)
+                VoiceLab = new IrodoriVoiceLabSettings();
+            VoiceLab.Normalize();
 
             if (VoiceConfigs == null)
                 VoiceConfigs = new Dictionary<string, IrodoriVoiceConfig>();
