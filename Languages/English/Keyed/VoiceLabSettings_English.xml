@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <RimTalk.TTS.VoiceLab.Settings.Button>Lab Settings ({0} steps)</RimTalk.TTS.VoiceLab.Settings.Button>
+  <RimTalk.TTS.VoiceLab.Settings.Title>Voice Lab Generation Settings</RimTalk.TTS.VoiceLab.Settings.Title>
+  <RimTalk.TTS.VoiceLab.Settings.Description>These settings are used only by Voice Lab and Reference Pack generation. Normal gameplay TTS settings are not changed.</RimTalk.TTS.VoiceLab.Settings.Description>
+  <RimTalk.TTS.VoiceLab.Settings.Steps>Steps</RimTalk.TTS.VoiceLab.Settings.Steps>
+  <RimTalk.TTS.VoiceLab.Settings.Speed>Speed</RimTalk.TTS.VoiceLab.Settings.Speed>
+  <RimTalk.TTS.VoiceLab.Settings.Duration>Duration scale</RimTalk.TTS.VoiceLab.Settings.Duration>
+  <RimTalk.TTS.VoiceLab.Settings.Sway>Sway coeff</RimTalk.TTS.VoiceLab.Settings.Sway>
+  <RimTalk.TTS.VoiceLab.Settings.CfgText>CFG Text</RimTalk.TTS.VoiceLab.Settings.CfgText>
+  <RimTalk.TTS.VoiceLab.Settings.CfgSpeaker>CFG Speaker</RimTalk.TTS.VoiceLab.Settings.CfgSpeaker>
+  <RimTalk.TTS.VoiceLab.Settings.CfgCaption>CFG Caption</RimTalk.TTS.VoiceLab.Settings.CfgCaption>
+  <RimTalk.TTS.VoiceLab.Settings.MaxRefSeconds>Max ref seconds</RimTalk.TTS.VoiceLab.Settings.MaxRefSeconds>
+  <RimTalk.TTS.VoiceLab.Settings.Schedule>T schedule mode</RimTalk.TTS.VoiceLab.Settings.Schedule>
+  <RimTalk.TTS.VoiceLab.Settings.Guidance>CFG guidance</RimTalk.TTS.VoiceLab.Settings.Guidance>
+  <RimTalk.TTS.VoiceLab.Settings.Hint>The default is 24 steps for faster voice exploration. Voice Lab always disables chunking and does not merge the normal TTS Advanced Options JSON. CFG Caption=0 uses the Irodori server/checkpoint default.</RimTalk.TTS.VoiceLab.Settings.Hint>
+  <RimTalk.TTS.VoiceLab.Settings.Reset>Reset defaults</RimTalk.TTS.VoiceLab.Settings.Reset>
+  <RimTalk.TTS.VoiceLab.Settings.Save>Save / Close</RimTalk.TTS.VoiceLab.Settings.Save>
+  <RimTalk.TTS.VoiceLab.Settings.Saved>Voice Lab settings saved.</RimTalk.TTS.VoiceLab.Settings.Saved>
+</LanguageData>
