@@ -90,17 +90,21 @@ namespace RimTalk.TTS.Patch
 
         private static void DrawVoiceModelButton(Rect inRect, Pawn pawn)
         {
-            // Position the button at the bottom of the window, above OK/Cancel buttons
-            float buttonWidth = 120f;
-            float buttonHeight = 20f;
-            float bottomMargin = 90f; // Leave space for OK/Cancel buttons
-            
+            // RimTalk 1.3.x redesigned PersonaEditorWindow into Personality / Memories tabs.
+            // The old bottom-fixed position now overlaps the Personality tab's chattiness controls.
+            // Keep the addon entry point in the window title row instead, which is stable across tabs
+            // and does not depend on the internal content layout.
+            const float buttonWidth = 120f;
+            const float buttonHeight = 28f;
+
             Rect buttonRect = new Rect(
-                inRect.x + 360f,
-                inRect.yMax - buttonHeight - bottomMargin,
+                inRect.xMax - buttonWidth,
+                inRect.y,
                 buttonWidth,
                 buttonHeight
             );
+
+            TooltipHandler.TipRegion(buttonRect, "RimTalk.TTS.VoiceModelTooltip".Translate());
 
             if (Widgets.ButtonText(buttonRect, "RimTalk.PersonaEditor.VoiceModel".Translate()))
             {
