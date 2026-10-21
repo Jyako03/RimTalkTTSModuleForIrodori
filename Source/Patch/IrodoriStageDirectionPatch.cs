@@ -12,45 +12,22 @@ using Verse;
 namespace RimTalk.TTS.Patch
 {
     /// <summary>
-    /// Keep the Fast Path prompt responsible only for the RTTTS machine envelope and delivery
-    /// caption. Dialogue-body policy (including Irodori inline controls and RP action narration)
-    /// belongs to the active RimTalk preset and must not be duplicated by the Mod.
-    /// </summary>
-    [HarmonyPatch(typeof(UnifiedTtsPayloadStore), nameof(UnifiedTtsPayloadStore.BuildPromptInstruction))]
-    public static class IrodoriFastPathPromptIsolationPatch
-    {
-        private const string LegacyBodyPolicy =
-            "11. Do not add TTS tags, SSML, or a second copy of the dialogue. Stage directions that are required by the existing RimTalk style may remain in the dialogue; RimTalk TTS can remove them locally from spoken input.";
-
-        private const string IsolatedBodyPolicy =
-            "11. Do not add TTS tags, SSML, or a second copy of the dialogue. The dialogue body is governed by the active RimTalk preset; this Fast Path layer defines only the [[RTTTS:...]] envelope and delivery-caption metadata.";
-
-        [HarmonyPostfix]
-        public static void Postfix(ref string __result)
-        {
-            if (string.IsNullOrEmpty(__result))
-                return;
-
-            __result = __result.Replace(LegacyBodyPolicy, IsolatedBodyPolicy);
-        }
-    }
-
-    /// <summary>
     /// Gemma/RP prompts often place strong output rules in the final User message. The full Fast Path
-    /// machine-envelope contract is still injected into the initial prompt block by RimTalkPatches,
-    /// but a tiny final reminder materially reduces occasional marker omission without duplicating
-    /// any Irodori emoji or dialogue-body generation policy.
+    /// rtts JSON metadata contract is injected into the initial prompt block by RimTalkPatches.
+    /// A short final reminder keeps metadata in the sibling rtts field, never inside text,
+    /// without duplicating Irodori emoji or dialogue-body generation policy.
     /// </summary>
     [HarmonyPatch(typeof(PromptManager), nameof(PromptManager.BuildMessages))]
     [HarmonyPriority(Priority.Last)]
-    public static class IrodoriFastPathFinalEnvelopeReminderPatch
+    public static class IrodoriFastPathFinalMetadataReminderPatch
     {
         private const string Reminder =
-            "\n\n[RIMTALK TTS FAST PATH — FINAL MACHINE REMINDER]\n" +
-            "For EVERY JSON text value, begin with the literal ASCII prefix [[RTTTS: and then write the delivery caption. " +
-            "Use the form [[RTTTS:<delivery-caption>]]<dialogue> exactly once. " +
-            "The active RimTalk preset alone governs the dialogue body and Irodori inline controls; " +
-            "this reminder only requires the machine envelope and delivery-caption metadata.";
+            "\n\n[RIMTALK TTS FAST PATH — FINAL JSON METADATA REMINDER]\n" +
+            "For EVERY dialogue JSON object, add a separate string property \"rtts\" containing only " +
+            "its concise Irodori delivery caption (empty string for neutral delivery). " +
+            "Keep \"text\" as ordinary RimTalk dialogue beginning with its routing prefix. " +
+            "NEVER put [[RTTTS:...]] or any machine metadata inside \"text\". " +
+            "The active RimTalk preset alone governs dialogue content and Irodori inline controls.";
 
         [HarmonyPostfix]
         public static void Postfix(ref List<(Role role, string content)> __result)
@@ -64,13 +41,13 @@ namespace RimTalk.TTS.Patch
                 int index = __result.Count - 1;
                 var current = __result[index];
 
-                if (current.content != null && current.content.Contains("[RIMTALK TTS FAST PATH — FINAL MACHINE REMINDER]"))
+                if (current.content != null && current.content.Contains("[RIMTALK TTS FAST PATH — FINAL JSON METADATA REMINDER]"))
                     return;
 
                 __result[index] = (current.role, (current.content ?? string.Empty) + Reminder);
 
                 if (settings.Irodori?.UnifiedTtsDebugLogging == true)
-                    Log.Message("[RimTalk.TTS] Fast Path final envelope reminder injected.");
+                    Log.Message("[RimTalk.TTS] Fast Path final JSON metadata reminder injected.");
             }
             catch (System.Exception ex)
             {
