@@ -11,7 +11,12 @@ namespace RimTalk.TTS.Service
     /// <summary>
     /// Fast-path bridge between RimTalk's first LLM response and the TTS request.
     ///
-    /// Canonical machine envelope (v4):
+    /// Preferred on-wire format: {"text":"実際に表示する台詞","rtts":"穏やかで柔らかく、少し安堵して"}.
+    /// The Irodori JSON metadata bridge converts rtts to the legacy in-memory envelope only
+    /// immediately before core TalkResponse deserialization; this store can therefore reuse its
+    /// existing capture/cache path without changing RimTalk.dll.
+    ///
+    /// Legacy machine envelope (v4):
     ///   [[RTTTS:穏やかで柔らかく、少し安堵して]]実際に表示する台詞
     ///
     /// Older v2/v3 envelopes (⟦RTTTS:...⟧) and several common bracket substitutions are
@@ -74,9 +79,9 @@ namespace RimTalk.TTS.Service
         }
 
         /// <summary>
-        /// Instruction injected into RimTalk's already-built prompt. ASCII delimiters are used on
-        /// purpose: they are materially less likely than uncommon Unicode brackets to be substituted
-        /// by the model/tokenizer. Source-side recovery still treats the model output as untrusted.
+        /// Instruction injected into RimTalk's already-built prompt.
+        /// Require a sibling rtts JSON property rather than putting delivery metadata into text.
+        /// Legacy text envelopes are still supported for old presets and imported dialogues.
         /// </summary>
         public static string BuildPromptInstruction(TTSSettings settings)
         {
@@ -84,21 +89,18 @@ namespace RimTalk.TTS.Service
             string extra = cfg?.UnifiedTtsExtraInstruction;
 
             string instruction = @"
-[RIMTALK TTS FAST PATH — MACHINE ENVELOPE]
-This requirement supplements the existing dialogue JSON format and applies to EVERY generated dialogue object.
+[RIMTALK TTS FAST PATH — JSON METADATA]
+This requirement supplements the active RimTalk dialogue JSON format and applies to EVERY generated dialogue object.
 
-For the value of each JSON ""text"" field:
-1. The FIRST characters MUST be exactly these ASCII characters: [[RTTTS:
-2. Close the metadata with exactly these two ASCII characters: ]]
-3. Required format: [[RTTTS:<delivery-caption>]]<dialogue>
-4. Use ASCII '[' and ']' for this envelope ONLY. NEVER replace them with Unicode lookalikes such as ⟦ ⟧ ［ ］ 【 】 〔 〕.
-5. <delivery-caption> is one short single-line natural-language instruction for Irodori-TTS describing ONLY audible delivery: emotion, restraint/intensity, softness/harshness, pace, hesitation, confidence, whisper/shout tendency, breathing quality, or similar vocal style.
-6. Keep <delivery-caption> concise (preferably under 120 characters), with no brackets, quotation marks, line breaks, stage directions, or spoken dialogue inside it.
-7. Prefer a nuanced Japanese caption when the dialogue is Japanese. Example: [[RTTTS:嬉しさを抑えきれず、少し早口で明るく]]やっと終わった！
-8. For a genuinely neutral line, use an empty caption: [[RTTTS:]]普通に話す台詞。
-9. Immediately after ]], write the actual RimTalk dialogue exactly once. The envelope is metadata, not spoken dialogue. Do NOT mention, explain, quote, or react to it.
-10. Keep every other required JSON field (name / act / target etc.) exactly as required by the existing RimTalk instructions.
-11. Do not add TTS tags, SSML, or a second copy of the dialogue. Stage directions that are required by the existing RimTalk style may remain in the dialogue; RimTalk TTS can remove them locally from spoken input.
+1. Add one sibling JSON string field named ""rtts"" to EVERY dialogue object, alongside ""name"", ""target"", ""act"", and ""text"".
+2. The ""rtts"" value is a short, single-line, natural-language delivery caption for Irodori-TTS: vocal emotion, pace, hesitation, breathing, softness, intensity, or whisper/shout tendency.
+3. For Japanese dialogue, prefer a concise Japanese caption (ideally under 120 characters). Example: ""rtts"": ""少し挑発的で、自信に満ちた口調。短い間を置く"".
+4. For neutral delivery use ""rtts"": """". Never omit the field and do not use null, objects, or arrays.
+5. Keep ""text"" as dialogue ONLY: start with the required RimTalk routing prefix, then optional visual action narration and the dialogue with inline Irodori controls as directed by the active preset.
+6. NEVER prepend or insert [[RTTTS:...]], ⟦RTTTS:...⟧, or any other machine envelope in ""text"". The separate ""rtts"" property replaces that legacy format.
+7. Do not place dialogue, routing prefixes, stage directions, control emojis, markup, or JSON instructions in ""rtts"".
+8. Preserve the rest of the active RimTalk preset's JSON structure, field names, dialogue policy, and output-only-JSON rules.
+9. Do not produce a second JSON object, extra explanation, SSML, or duplicated dialogue.
 ";
 
             if (!string.IsNullOrWhiteSpace(extra))
