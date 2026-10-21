@@ -109,6 +109,30 @@ Voice ID: rttts_953_20260827160448_fd310a
 
 そのため、Pawn の割り当てや Irodori Server 上の参照音声との対応を壊さずに名前だけ整理できます。
 
+## Fast Path: 独立した `rtts` メタデータ (新方式)
+
+Irodori Fast Path を有効にすると、RimTalk の出力JSONにTTS用の `rtts` 文字列フィールドを要求します。発話本文 `text` にメタデータを埋め込む必要はありません。
+
+```json
+[
+  {
+    "name": "Rubber",
+    "target": "Jyako",
+    "act": "Chat",
+    "text": "(to Jyako) （片眉を上げる）……プログラムね。あたしは触って確かめる方が性に合ってる。",
+    "rtts": "少し挑発的で、自信に満ちた口調。短い間を置く"
+  }
+]
+```
+
+- `text`: 通常のRimTalkルーティング・RP動作説明・台詞・Irodori inline Emoji/SFXのみ
+- `rtts`: その発話の声の出し方を指定する短いIrodori delivery caption。通常時は空文字列 `""`
+- ModはRimTalk本体の既存 `TalkResponse` が `rtts` を保持できないため、JSONデシリアライズ直前にメタデータを取り込み、従来のFast Path内部キャッシュへ橋渡しします。RimTalk本体の改造は不要です
+- 旧 `[[RTTTS:...]]` 形式も入力互換として継続サポートします。ただし新規のPersona/Prompt presetでは `rtts` フィールド方式へ切り替えてください
+- 現在のFast Pathは `rtts` を会話履歴には保存せず、TTS合成へ引き渡します。出力JSONのその他の独自フィールドは保証されません
+
+**注意:** 旧プリセットで `text` の冒頭 `[[RTTTS:...]]` を必須にしている場合、その規則とJSON schemaの4キー限定を更新し、必須5キー `name/target/act/text/rtts` に変更してください。MOD側は新方式を指示しますが、強い旧プリセット指示との衝突を避けるため、プリセットの更新も推奨します。
+
 ## Voice Lab
 
 Voice Lab では、Irodori の Voice Design 機能を使って参照音声候補を作成できます。
