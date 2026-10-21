@@ -121,7 +121,7 @@ This requirement supplements the active RimTalk dialogue JSON format and applies
             if (!recognized)
             {
                 if (settings.Irodori?.UnifiedTtsDebugLogging == true)
-                    Log.Warning("[RimTalk.TTS] Unified fast path marker missing; legacy fallback may be used.");
+                    Log.Warning("[RimTalk.TTS] Fast Path delivery metadata missing (rtts or legacy envelope); fallback may be used.");
                 return false;
             }
 
